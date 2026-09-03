@@ -1,5 +1,7 @@
-package com.coderaah.medtrack.patient.exception;
+package com.coderaah.medtrack.common.exception;
 
+import com.coderaah.medtrack.patient.exception.DuplicateMedicalRecordNumberException;
+import com.coderaah.medtrack.patient.exception.PatientNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
