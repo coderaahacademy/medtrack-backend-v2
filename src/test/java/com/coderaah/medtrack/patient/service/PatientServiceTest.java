@@ -5,11 +5,12 @@ import com.coderaah.medtrack.identity.repository.PersonRepository;
 import com.coderaah.medtrack.patient.domain.PatientProfile;
 import com.coderaah.medtrack.patient.dto.PatientRequest;
 import com.coderaah.medtrack.patient.dto.PatientResponse;
+import com.coderaah.medtrack.patient.exception.DuplicateMedicalRecordNumberException;
+import com.coderaah.medtrack.patient.exception.PatientNotFoundException;
 import com.coderaah.medtrack.patient.repository.PatientProfileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
+
 
 import java.time.LocalDate;
 import java.util.List;
@@ -67,9 +68,9 @@ public class PatientServiceTest {
         when(patientProfileRepository.findById(999L))
                 .thenReturn(Optional.empty());
 
-        ResponseStatusException exception= assertThrows(ResponseStatusException.class, ()->patientService.getPatientById(999L));
+        PatientNotFoundException exception= assertThrows(PatientNotFoundException.class, ()->patientService.getPatientById(999L));
 
-        assertEquals(HttpStatus.NOT_FOUND,exception.getStatusCode());
+        assertEquals("Patient not found",exception.getMessage());
     }
 
     @Test
@@ -127,7 +128,7 @@ public class PatientServiceTest {
     }
 
     @Test
-    void createPatient_throwsBadRequest_whenMedicalRecordNumberExists(){
+    void createPatient_throwsException_whenMedicalRecordNumberExists(){
 
         PatientRequest request= new PatientRequest();
         request.setFirstName("John");
@@ -137,9 +138,9 @@ public class PatientServiceTest {
         when(patientProfileRepository.existsByMedicalRecordNumber("MRN-001"))
                 .thenReturn(true);
 
-        ResponseStatusException exception=assertThrows(ResponseStatusException.class,()-> patientService.createPatient(request));
+        DuplicateMedicalRecordNumberException exception=assertThrows(DuplicateMedicalRecordNumberException.class,()-> patientService.createPatient(request));
 
-        assertEquals(HttpStatus.BAD_REQUEST,exception.getStatusCode());
+        assertEquals("Medical record number already exists",exception.getMessage());
     }
 
     @Test
@@ -184,7 +185,7 @@ public class PatientServiceTest {
     }
 
     @Test
-    void updatePatient_throwsNotFound_whenPatientDoesNotExist(){
+    void updatePatient_throwsException_whenPatientDoesNotExist(){
         PatientRequest updateRequest = new PatientRequest();
         updateRequest.setFirstName("John");
         updateRequest.setLastName("Smith");
@@ -193,16 +194,16 @@ public class PatientServiceTest {
         when(patientProfileRepository.findById(99999L))
                 .thenReturn(Optional.empty());
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
+        PatientNotFoundException exception = assertThrows(
+                PatientNotFoundException.class,
                 () -> patientService.updatePatient(99999L, updateRequest)
         );
 
-        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+        assertEquals("Patient not found", exception.getMessage());
     }
 
     @Test
-    void updatePatient_throwsBadRequest_whenMedicalRecordNumberExists(){
+    void updatePatient_throwsException_whenMedicalRecordNumberExists(){
         Person person = new Person(
                 "John",
                 "Smith",
@@ -228,12 +229,12 @@ public class PatientServiceTest {
                 1L
         )).thenReturn(true);
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
+        DuplicateMedicalRecordNumberException exception = assertThrows(
+                DuplicateMedicalRecordNumberException.class,
                 () -> patientService.updatePatient(1L, updateRequest)
         );
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertEquals("Medical record number already exists", exception.getMessage());
     }
 
 }

@@ -2,6 +2,8 @@ package com.coderaah.medtrack.patient.controller;
 
 import com.coderaah.medtrack.patient.dto.PatientRequest;
 import com.coderaah.medtrack.patient.dto.PatientResponse;
+import com.coderaah.medtrack.patient.exception.DuplicateMedicalRecordNumberException;
+import com.coderaah.medtrack.patient.exception.PatientNotFoundException;
 import com.coderaah.medtrack.patient.service.PatientService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +15,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import java.util.List;
 
@@ -35,22 +39,26 @@ public class PatientControllerTest {
 
         PatientResponse response = new PatientResponse();
         response.setId(1L);
+        response.setFirstName("John");
+        response.setLastName("Smith");
+        response.setMedicalRecordNumber("MRN-001");
 
         when(patientService.getPatientById(1L))
                 .thenReturn(response);
 
         mockMvc.perform(get("/api/patients/1"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.firstName").value("John"))
+                .andExpect(jsonPath("$.lastName").value("Smith"))
+                .andExpect(jsonPath("$.medicalRecordNumber").value("MRN-001"));
     }
 
     @Test
     void getPatientById_returnsNotFound() throws Exception {
 
         when(patientService.getPatientById(99999L))
-                .thenThrow(new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.NOT_FOUND,
-                        "patient not found"
-                ));
+                .thenThrow(new PatientNotFoundException("Patient not found"));
 
         mockMvc.perform(get("/api/patients/99999"))
                 .andExpect(status().isNotFound());
@@ -71,13 +79,17 @@ public class PatientControllerTest {
         mockMvc.perform(post("/api/patients")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                            {
-                              "firstName": "John",
-                              "lastName": "Smith",
-                              "medicalRecordNumber": "MRN-001"
-                            }
-                            """))
-                .andExpect(status().isCreated());
+                    {
+                      "firstName": "John",
+                      "lastName": "Smith",
+                      "medicalRecordNumber": "MRN-001"
+                    }
+                    """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.firstName").value("John"))
+                .andExpect(jsonPath("$.lastName").value("Smith"))
+                .andExpect(jsonPath("$.medicalRecordNumber").value("MRN-001"));
     }
 
     @Test
@@ -99,10 +111,7 @@ public class PatientControllerTest {
     void createPatient_returnsBadRequest_whenMedicalRecordNumberExists() throws Exception {
 
         when(patientService.createPatient(org.mockito.ArgumentMatchers.any(PatientRequest.class)))
-                .thenThrow(new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.BAD_REQUEST,
-                        "Medical record number already exists"
-                ));
+                .thenThrow(new DuplicateMedicalRecordNumberException("Medical record number already exists"));
 
         mockMvc.perform(post("/api/patients")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -131,7 +140,11 @@ public class PatientControllerTest {
                 .thenReturn(List.of(patient1, patient2));
 
         mockMvc.perform(get("/api/patients"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(1))
+                .andExpect(jsonPath("$[0].firstName").value("John"))
+                .andExpect(jsonPath("$[1].id").value(2))
+                .andExpect(jsonPath("$[1].firstName").value("Sara"));
     }
 
     @Test
@@ -151,13 +164,17 @@ public class PatientControllerTest {
         mockMvc.perform(put("/api/patients/1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                            {
-                              "firstName": "John",
-                              "lastName": "Updated",
-                              "medicalRecordNumber": "MRN-001"
-                            }
-                            """))
-                .andExpect(status().isOk());
+                    {
+                      "firstName": "John",
+                      "lastName": "Updated",
+                      "medicalRecordNumber": "MRN-001"
+                    }
+                    """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.firstName").value("John"))
+                .andExpect(jsonPath("$.lastName").value("Updated"))
+                .andExpect(jsonPath("$.medicalRecordNumber").value("MRN-001"));
     }
     @Test
     void updatePatient_returnsNotFound_whenPatientDoesNotExist() throws Exception {
@@ -165,10 +182,7 @@ public class PatientControllerTest {
         when(patientService.updatePatient(
                 org.mockito.ArgumentMatchers.eq(99999L),
                 org.mockito.ArgumentMatchers.any(PatientRequest.class)
-        )).thenThrow(new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.NOT_FOUND,
-                "patient not found"
-        ));
+        )).thenThrow(new PatientNotFoundException("Patient not found"));
 
         mockMvc.perform(put("/api/patients/99999")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -188,10 +202,7 @@ public class PatientControllerTest {
         when(patientService.updatePatient(
                 org.mockito.ArgumentMatchers.eq(1L),
                 org.mockito.ArgumentMatchers.any(PatientRequest.class)
-        )).thenThrow(new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.BAD_REQUEST,
-                "Medical record number already exists"
-        ));
+        )).thenThrow(new DuplicateMedicalRecordNumberException("Medical record number already exists"));
 
         mockMvc.perform(put("/api/patients/1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -202,6 +213,23 @@ public class PatientControllerTest {
                               "medicalRecordNumber": "MRN-002"
                             }
                             """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createPatient_returnsBadRequest_whenFirstNameExceedsMaximumLength() throws Exception {
+
+        String longFirstName = "A".repeat(101);
+
+        mockMvc.perform(post("/api/patients")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                          "firstName": "%s",
+                          "lastName": "Smith",
+                          "medicalRecordNumber": "MRN-003"
+                        }
+                        """.formatted(longFirstName)))
                 .andExpect(status().isBadRequest());
     }
 }

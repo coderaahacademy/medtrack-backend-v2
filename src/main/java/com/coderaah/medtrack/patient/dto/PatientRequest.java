@@ -2,6 +2,7 @@ package com.coderaah.medtrack.patient.dto;
 
 import com.coderaah.medtrack.patient.domain.BloodType;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
@@ -9,22 +10,28 @@ public class PatientRequest {
 
 
     @NotBlank
+    @Size(max = 100)
     private String firstName;
 
     @NotBlank
+    @Size(max = 100)
     private String lastName;
 
     private LocalDate birthDate;
 
+    @Size(max = 50)
     private String phone;
 
     @NotBlank
+    @Size(max = 100)
     private String medicalRecordNumber;
 
     private BloodType bloodType;
 
+    @Size(max = 255)
     private String insuranceProvider;
 
+    @Size(max = 100)
     private String insuranceNumber;
 
     public String getFirstName() {

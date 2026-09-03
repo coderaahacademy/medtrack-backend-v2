@@ -5,11 +5,11 @@ import com.coderaah.medtrack.identity.repository.PersonRepository;
 import com.coderaah.medtrack.patient.domain.PatientProfile;
 import com.coderaah.medtrack.patient.dto.PatientRequest;
 import com.coderaah.medtrack.patient.dto.PatientResponse;
+import com.coderaah.medtrack.patient.exception.DuplicateMedicalRecordNumberException;
+import com.coderaah.medtrack.patient.exception.PatientNotFoundException;
 import com.coderaah.medtrack.patient.repository.PatientProfileRepository;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -29,10 +29,7 @@ public class PatientService {
     public PatientResponse createPatient(PatientRequest newPatient){
 
         if(patientProfileRepository.existsByMedicalRecordNumber(newPatient.getMedicalRecordNumber())){
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Medical record number already exists."
-            );
+            throw new DuplicateMedicalRecordNumberException("Medical record number already exists");
         }
 
         Person person= new Person(
@@ -60,10 +57,7 @@ public class PatientService {
     public PatientResponse getPatientById(Long id){
 
         PatientProfile patient= patientProfileRepository.findById(id)
-                .orElseThrow(()->new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "patient not found"
-                ));
+                .orElseThrow(()->new PatientNotFoundException("Patient not found"));
 
         return toResponse(patient);
     }
@@ -79,18 +73,12 @@ public class PatientService {
     public PatientResponse updatePatient(Long id, PatientRequest patientUpdate){
 
         PatientProfile patient=patientProfileRepository.findById(id)
-                .orElseThrow(()-> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "patient not found"
-                ));
+                .orElseThrow(()-> new PatientNotFoundException("Patient not found"));
 
         if(patientProfileRepository.existsByMedicalRecordNumberAndIdNot(                 // Check whether another patient already uses this MRN
                 patientUpdate.getMedicalRecordNumber(),
                 id)){
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Medical record number already exists"
-            );
+            throw new DuplicateMedicalRecordNumberException("Medical record number already exists");
         }
 
 
