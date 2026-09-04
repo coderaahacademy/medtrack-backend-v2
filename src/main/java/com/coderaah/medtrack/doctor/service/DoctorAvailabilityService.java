@@ -4,6 +4,9 @@ import com.coderaah.medtrack.doctor.domain.DoctorAvailabilityRule;
 import com.coderaah.medtrack.doctor.domain.DoctorProfile;
 import com.coderaah.medtrack.doctor.dto.DoctorAvailabilityRuleRequest;
 import com.coderaah.medtrack.doctor.dto.DoctorAvailabilityRuleResponse;
+import com.coderaah.medtrack.doctor.exception.AvailabilityRuleNotFoundException;
+import com.coderaah.medtrack.doctor.exception.DoctorNotFoundException;
+import com.coderaah.medtrack.doctor.exception.InvalidScheduleTimeRangeException;
 import com.coderaah.medtrack.doctor.repository.DoctorAvailabilityRuleRepository;
 import com.coderaah.medtrack.doctor.repository.DoctorProfileRepository;
 import org.springframework.stereotype.Service;
@@ -33,12 +36,13 @@ public class DoctorAvailabilityService {
 
         DoctorProfile doctor = getDoctor(doctorId);
 
-        DoctorAvailabilityRule rule = new DoctorAvailabilityRule(
-                doctor,
-                request.dayOfWeek(),
-                request.startTime(),
-                request.endTime()
-        );
+        DoctorAvailabilityRule rule =
+                new DoctorAvailabilityRule(
+                        doctor,
+                        request.dayOfWeek(),
+                        request.startTime(),
+                        request.endTime()
+                );
 
         DoctorAvailabilityRule saved =
                 availabilityRuleRepository.save(rule);
@@ -52,7 +56,7 @@ public class DoctorAvailabilityService {
         getDoctor(doctorId);
 
         return availabilityRuleRepository
-                .findByDoctorIdOrderByDayOfWeekAscStartTimeAsc(doctorId)
+                .findByDoctorIdAndActiveTrueOrderByDayOfWeekAscStartTimeAsc(doctorId)
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -71,7 +75,8 @@ public class DoctorAvailabilityService {
                 availabilityRuleRepository
                         .findByIdAndDoctorId(ruleId, doctorId)
                         .orElseThrow(() ->
-                                new RuntimeException("Availability rule not found"));
+                                new AvailabilityRuleNotFoundException(
+                                        "Availability rule not found"));
 
         rule.setDayOfWeek(request.dayOfWeek());
         rule.setStartTime(request.startTime());
@@ -90,7 +95,8 @@ public class DoctorAvailabilityService {
                 availabilityRuleRepository
                         .findByIdAndDoctorId(ruleId, doctorId)
                         .orElseThrow(() ->
-                                new RuntimeException("Availability rule not found"));
+                                new AvailabilityRuleNotFoundException(
+                                        "Availability rule not found"));
 
         rule.setActive(false);
 
@@ -98,22 +104,24 @@ public class DoctorAvailabilityService {
     }
 
     private DoctorProfile getDoctor(Long doctorId) {
+
         return doctorProfileRepository.findById(doctorId)
                 .orElseThrow(() ->
-                        new RuntimeException("Doctor not found"));
+                        new DoctorNotFoundException("Doctor not found"));
     }
 
     private void validateTimeRange(
             DoctorAvailabilityRuleRequest request) {
 
         if (!request.startTime().isBefore(request.endTime())) {
-            throw new IllegalArgumentException(
+            throw new InvalidScheduleTimeRangeException(
                     "startTime must be before endTime");
         }
     }
 
     private DoctorAvailabilityRuleResponse toResponse(
             DoctorAvailabilityRule rule) {
+
         return new DoctorAvailabilityRuleResponse(
                 rule.getId(),
                 rule.getDoctor().getId(),

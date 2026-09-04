@@ -7,6 +7,7 @@ import com.coderaah.medtrack.doctor.dto.DoctorScheduleExceptionResponse;
 import com.coderaah.medtrack.doctor.service.DoctorAvailabilityService;
 import com.coderaah.medtrack.doctor.service.DoctorScheduleExceptionService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,7 +32,7 @@ public class DoctorAvailabilityController {
             @PathVariable Long doctorId,
             @Valid @RequestBody DoctorAvailabilityRuleRequest request) {
 
-        return ResponseEntity.ok(
+        return ResponseEntity.status(HttpStatus.CREATED).body(
                 availabilityService.addRule(doctorId, request)
         );
     }
@@ -75,7 +76,7 @@ public class DoctorAvailabilityController {
             @PathVariable Long doctorId,
             @Valid @RequestBody DoctorScheduleExceptionRequest request) {
 
-        return ResponseEntity.ok(
+        return ResponseEntity.status(HttpStatus.CREATED).body(
                 exceptionService.createException(
                         doctorId,
                         request
@@ -90,5 +91,15 @@ public class DoctorAvailabilityController {
         return ResponseEntity.ok(
                 exceptionService.getExceptions(doctorId)
         );
+    }
+
+    @DeleteMapping("/schedule-exceptions/{exceptionId}")
+    public ResponseEntity<Void> cancelScheduleException(
+            @PathVariable Long doctorId,
+            @PathVariable Long exceptionId) {
+
+        exceptionService.cancelException(doctorId, exceptionId);
+
+        return ResponseEntity.noContent().build();
     }
 }

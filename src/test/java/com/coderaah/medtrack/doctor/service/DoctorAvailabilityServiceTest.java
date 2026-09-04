@@ -4,8 +4,12 @@ import com.coderaah.medtrack.doctor.domain.DoctorAvailabilityRule;
 import com.coderaah.medtrack.doctor.domain.DoctorProfile;
 import com.coderaah.medtrack.doctor.dto.DoctorAvailabilityRuleRequest;
 import com.coderaah.medtrack.doctor.dto.DoctorAvailabilityRuleResponse;
+import com.coderaah.medtrack.doctor.exception.AvailabilityRuleNotFoundException;
+import com.coderaah.medtrack.doctor.exception.DoctorNotFoundException;
+import com.coderaah.medtrack.doctor.exception.InvalidScheduleTimeRangeException;
 import com.coderaah.medtrack.doctor.repository.DoctorAvailabilityRuleRepository;
 import com.coderaah.medtrack.doctor.repository.DoctorProfileRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,8 +23,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class DoctorAvailabilityServiceTest {
@@ -32,15 +35,17 @@ class DoctorAvailabilityServiceTest {
     private DoctorProfileRepository doctorProfileRepository;
 
     @InjectMocks
-    private DoctorAvailabilityService service;
+    private DoctorAvailabilityService availabilityService;
+
+    private DoctorProfile doctor;
+
+    @BeforeEach
+    void setUp() {
+        doctor = new DoctorProfile();
+    }
 
     @Test
     void shouldAddAvailabilityRule() {
-
-        Long doctorId = 1L;
-
-        DoctorProfile doctor = new DoctorProfile();
-        doctor.setId(doctorId);
 
         DoctorAvailabilityRuleRequest request =
                 new DoctorAvailabilityRuleRequest(
@@ -49,10 +54,7 @@ class DoctorAvailabilityServiceTest {
                         LocalTime.of(13, 0)
                 );
 
-        when(doctorProfileRepository.findById(doctorId))
-                .thenReturn(Optional.of(doctor));
-
-        DoctorAvailabilityRule savedRule =
+        DoctorAvailabilityRule rule =
                 new DoctorAvailabilityRule(
                         doctor,
                         request.dayOfWeek(),
@@ -60,16 +62,15 @@ class DoctorAvailabilityServiceTest {
                         request.endTime()
                 );
 
-        savedRule.setId(1L);
+        when(doctorProfileRepository.findById(1L))
+                .thenReturn(Optional.of(doctor));
+
         when(availabilityRuleRepository.save(any(DoctorAvailabilityRule.class)))
-                .thenReturn(savedRule);
+                .thenReturn(rule);
 
         DoctorAvailabilityRuleResponse response =
-                service.addRule(doctorId, request);
+                availabilityService.addRule(1L, request);
 
-        assertNotNull(response);
-        assertEquals(1L, response.id());
-        assertEquals(doctorId, response.doctorId());
         assertEquals(DayOfWeek.MONDAY, response.dayOfWeek());
         assertEquals(LocalTime.of(9, 0), response.startTime());
         assertEquals(LocalTime.of(13, 0), response.endTime());
@@ -79,28 +80,26 @@ class DoctorAvailabilityServiceTest {
     @Test
     void shouldRejectInvalidAvailabilityTimeRange() {
 
-        Long doctorId = 1L;
-
         DoctorAvailabilityRuleRequest request =
                 new DoctorAvailabilityRuleRequest(
                         DayOfWeek.MONDAY,
-                        LocalTime.of(13, 0),
+                        LocalTime.of(14, 0),
                         LocalTime.of(9, 0)
                 );
 
         assertThrows(
-                IllegalArgumentException.class,
-                () -> service.addRule(doctorId, request)
+                InvalidScheduleTimeRangeException.class,
+                () -> availabilityService.addRule(1L, request)
+        );
+
+        verifyNoInteractions(
+                doctorProfileRepository,
+                availabilityRuleRepository
         );
     }
 
     @Test
     void shouldGetAvailabilityRules() {
-
-        Long doctorId = 1L;
-
-        DoctorProfile doctor = new DoctorProfile();
-        doctor.setId(doctorId);
 
         DoctorAvailabilityRule rule =
                 new DoctorAvailabilityRule(
@@ -110,43 +109,27 @@ class DoctorAvailabilityServiceTest {
                         LocalTime.of(13, 0)
                 );
 
-        rule.setId(1L);
-
-        when(doctorProfileRepository.findById(doctorId))
+        when(doctorProfileRepository.findById(1L))
                 .thenReturn(Optional.of(doctor));
 
         when(availabilityRuleRepository
-                .findByDoctorIdOrderByDayOfWeekAscStartTimeAsc(doctorId))
+                .findByDoctorIdAndActiveTrueOrderByDayOfWeekAscStartTimeAsc(1L))
                 .thenReturn(List.of(rule));
 
-        List<DoctorAvailabilityRuleResponse> response =
-                service.getRules(doctorId);
+        List<DoctorAvailabilityRuleResponse> result =
+                availabilityService.getRules(1L);
 
-        assertNotNull(response);
-        assertEquals(1, response.size());
-        assertEquals(1L, response.get(0).id());
-        assertEquals(doctorId, response.get(0).doctorId());
-        assertEquals(DayOfWeek.MONDAY, response.get(0).dayOfWeek());
-        assertEquals(
-                LocalTime.of(9, 0),
-                response.get(0).startTime()
-        );
-        assertEquals(
-                LocalTime.of(13, 0),
-                response.get(0).endTime()
-        );
+        assertEquals(1, result.size());
+        assertEquals(DayOfWeek.MONDAY, result.get(0).dayOfWeek());
+        assertEquals(LocalTime.of(9, 0), result.get(0).startTime());
+        assertEquals(LocalTime.of(13, 0), result.get(0).endTime());
+        assertTrue(result.get(0).active());
     }
 
     @Test
-    void shouldUpdateAvailabilityRule() {
+    void shouldNotReturnInactiveAvailabilityRules() {
 
-        Long doctorId = 1L;
-        Long ruleId = 1L;
-
-        DoctorProfile doctor = new DoctorProfile();
-        doctor.setId(doctorId);
-
-        DoctorAvailabilityRule existingRule =
+        DoctorAvailabilityRule activeRule =
                 new DoctorAvailabilityRule(
                         doctor,
                         DayOfWeek.MONDAY,
@@ -154,7 +137,22 @@ class DoctorAvailabilityServiceTest {
                         LocalTime.of(13, 0)
                 );
 
-        existingRule.setId(ruleId);
+        when(doctorProfileRepository.findById(1L))
+                .thenReturn(Optional.of(doctor));
+
+        when(availabilityRuleRepository
+                .findByDoctorIdAndActiveTrueOrderByDayOfWeekAscStartTimeAsc(1L))
+                .thenReturn(List.of(activeRule));
+
+        List<DoctorAvailabilityRuleResponse> result =
+                availabilityService.getRules(1L);
+
+        assertEquals(1, result.size());
+        assertTrue(result.get(0).active());
+    }
+
+    @Test
+    void shouldUpdateAvailabilityRule() {
 
         DoctorAvailabilityRuleRequest request =
                 new DoctorAvailabilityRuleRequest(
@@ -163,46 +161,38 @@ class DoctorAvailabilityServiceTest {
                         LocalTime.of(16, 0)
                 );
 
-        when(doctorProfileRepository.findById(doctorId))
+        DoctorAvailabilityRule rule =
+                new DoctorAvailabilityRule(
+                        doctor,
+                        DayOfWeek.MONDAY,
+                        LocalTime.of(9, 0),
+                        LocalTime.of(13, 0)
+                );
+
+        when(doctorProfileRepository.findById(1L))
                 .thenReturn(Optional.of(doctor));
 
         when(availabilityRuleRepository
-                .findByIdAndDoctorId(ruleId, doctorId))
-                .thenReturn(Optional.of(existingRule));
+                .findByIdAndDoctorId(10L, 1L))
+                .thenReturn(Optional.of(rule));
 
-        when(availabilityRuleRepository.save(existingRule))
-                .thenReturn(existingRule);
+        when(availabilityRuleRepository.save(rule))
+                .thenReturn(rule);
 
         DoctorAvailabilityRuleResponse response =
-                service.updateRule(
-                        doctorId,
-                        ruleId,
+                availabilityService.updateRule(
+                        1L,
+                        10L,
                         request
                 );
 
-        assertNotNull(response);
-        assertEquals(ruleId, response.id());
-        assertEquals(doctorId, response.doctorId());
         assertEquals(DayOfWeek.TUESDAY, response.dayOfWeek());
-        assertEquals(
-                LocalTime.of(10, 0),
-                response.startTime()
-        );
-        assertEquals(
-                LocalTime.of(16, 0),
-                response.endTime()
-        );
-        assertTrue(response.active());
+        assertEquals(LocalTime.of(10, 0), response.startTime());
+        assertEquals(LocalTime.of(16, 0), response.endTime());
     }
 
     @Test
     void shouldDeactivateAvailabilityRule() {
-
-        Long doctorId = 1L;
-        Long ruleId = 1L;
-
-        DoctorProfile doctor = new DoctorProfile();
-        doctor.setId(doctorId);
 
         DoctorAvailabilityRule rule =
                 new DoctorAvailabilityRule(
@@ -212,19 +202,70 @@ class DoctorAvailabilityServiceTest {
                         LocalTime.of(13, 0)
                 );
 
-        rule.setId(ruleId);
-
-        when(doctorProfileRepository.findById(doctorId))
+        when(doctorProfileRepository.findById(1L))
                 .thenReturn(Optional.of(doctor));
 
         when(availabilityRuleRepository
-                .findByIdAndDoctorId(ruleId, doctorId))
+                .findByIdAndDoctorId(10L, 1L))
                 .thenReturn(Optional.of(rule));
 
-        service.deactivateRule(doctorId, ruleId);
+        availabilityService.deactivateRule(1L, 10L);
 
         assertFalse(rule.isActive());
 
-        verify(availabilityRuleRepository).save(rule);
+        verify(availabilityRuleRepository)
+                .save(rule);
+    }
+
+    @Test
+    void shouldRejectUnknownDoctor() {
+
+        DoctorAvailabilityRuleRequest request =
+                new DoctorAvailabilityRuleRequest(
+                        DayOfWeek.MONDAY,
+                        LocalTime.of(9, 0),
+                        LocalTime.of(13, 0)
+                );
+
+        when(doctorProfileRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                DoctorNotFoundException.class,
+                () -> availabilityService.addRule(999L, request)
+        );
+
+        verify(availabilityRuleRepository, never())
+                .save(any(DoctorAvailabilityRule.class));
+    }
+
+    @Test
+    void shouldRejectUpdatingUnknownAvailabilityRule() {
+
+        DoctorAvailabilityRuleRequest request =
+                new DoctorAvailabilityRuleRequest(
+                        DayOfWeek.TUESDAY,
+                        LocalTime.of(10, 0),
+                        LocalTime.of(16, 0)
+                );
+
+        when(doctorProfileRepository.findById(1L))
+                .thenReturn(Optional.of(doctor));
+
+        when(availabilityRuleRepository
+                .findByIdAndDoctorId(999L, 1L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                AvailabilityRuleNotFoundException.class,
+                () -> availabilityService.updateRule(
+                        1L,
+                        999L,
+                        request
+                )
+        );
+
+        verify(availabilityRuleRepository, never())
+                .save(any(DoctorAvailabilityRule.class));
     }
 }

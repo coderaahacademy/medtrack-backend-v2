@@ -4,11 +4,16 @@ import com.coderaah.medtrack.doctor.domain.DoctorProfile;
 import com.coderaah.medtrack.doctor.domain.DoctorScheduleException;
 import com.coderaah.medtrack.doctor.dto.DoctorScheduleExceptionRequest;
 import com.coderaah.medtrack.doctor.dto.DoctorScheduleExceptionResponse;
+import com.coderaah.medtrack.doctor.exception.CannotCancelPastScheduleException;
+import com.coderaah.medtrack.doctor.exception.DoctorNotFoundException;
+import com.coderaah.medtrack.doctor.exception.InvalidScheduleTimeRangeException;
+import com.coderaah.medtrack.doctor.exception.ScheduleExceptionNotFoundException;
 import com.coderaah.medtrack.doctor.repository.DoctorProfileRepository;
 import com.coderaah.medtrack.doctor.repository.DoctorScheduleExceptionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -62,17 +67,39 @@ public class DoctorScheduleExceptionService {
                 .toList();
     }
 
+    public void cancelException(
+            Long doctorId,
+            Long exceptionId) {
+
+        getDoctor(doctorId);
+
+        DoctorScheduleException exception =
+                exceptionRepository
+                        .findByIdAndDoctorId(exceptionId, doctorId)
+                        .orElseThrow(() ->
+                                new ScheduleExceptionNotFoundException(
+                                        "Schedule exception not found"));
+
+        if (!exception.getStartsAt().isAfter(LocalDateTime.now())) {
+            throw new CannotCancelPastScheduleException(
+                    "Only future schedule exceptions can be cancelled");
+        }
+
+        exceptionRepository.delete(exception);
+    }
+
     private DoctorProfile getDoctor(Long doctorId) {
+
         return doctorProfileRepository.findById(doctorId)
                 .orElseThrow(() ->
-                        new RuntimeException("Doctor not found"));
+                        new DoctorNotFoundException("Doctor not found"));
     }
 
     private void validateTimeRange(
             DoctorScheduleExceptionRequest request) {
 
         if (!request.startsAt().isBefore(request.endsAt())) {
-            throw new IllegalArgumentException(
+            throw new InvalidScheduleTimeRangeException(
                     "startsAt must be before endsAt");
         }
     }
