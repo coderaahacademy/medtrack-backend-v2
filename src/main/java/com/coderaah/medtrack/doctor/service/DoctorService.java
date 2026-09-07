@@ -4,14 +4,13 @@ import com.coderaah.medtrack.doctor.domain.DoctorProfile;
 import com.coderaah.medtrack.doctor.dto.DoctorPersonRequest;
 import com.coderaah.medtrack.doctor.dto.DoctorRequest;
 import com.coderaah.medtrack.doctor.dto.DoctorResponse;
-import com.coderaah.medtrack.doctor.exception.DoctorNotFoundException;
-import com.coderaah.medtrack.doctor.exception.DoctorPersonNotFoundException;
-import com.coderaah.medtrack.doctor.exception.DuplicateLicenseNumberException;
-import com.coderaah.medtrack.doctor.exception.InvalidDoctorRequestException;
+import com.coderaah.medtrack.doctor.dto.DoctorUpdateRequest;
+import com.coderaah.medtrack.doctor.exception.*;
 import com.coderaah.medtrack.doctor.repository.DoctorProfileRepository;
 import com.coderaah.medtrack.identity.domain.Person;
 import com.coderaah.medtrack.identity.repository.PersonRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -20,7 +19,6 @@ public class DoctorService {
 
     private final DoctorProfileRepository doctorProfileRepository;
     private final PersonRepository personRepository;
-
 
     public DoctorService(DoctorProfileRepository doctorProfileRepository, PersonRepository personRepository) {
         this.doctorProfileRepository = doctorProfileRepository;
@@ -64,7 +62,7 @@ public class DoctorService {
 
     }
 
-    public DoctorResponse updateDoctor(Long id, DoctorRequest doctorRequest) {
+    public DoctorResponse updateDoctor(Long id, DoctorUpdateRequest doctorRequest) {
         DoctorProfile doctorProfile = getDoctorById(id);
 
         if (!doctorProfile.getLicenseNumber().equals(doctorRequest.getLicenseNumber())) {
@@ -83,6 +81,7 @@ public class DoctorService {
         return toResponse(getDoctorById(id));
     }
 
+    @Transactional
     public DoctorResponse registerDoctor(DoctorRequest doctorRequest) {
         validateLicenseNumber(doctorRequest.getLicenseNumber());
 
@@ -98,6 +97,11 @@ public class DoctorService {
             // Existing Person
             person = personRepository.findById(doctorRequest.getPersonId()).orElseThrow(()
                     -> new DoctorPersonNotFoundException("Person with id " + doctorRequest.getPersonId() + " not found"));
+            if (doctorProfileRepository.existsByPersonId(doctorRequest.getPersonId())) {
+                throw new DuplicateDoctorPersonException(
+                        "Doctor profile for person with id " + doctorRequest.getPersonId() + " already exists"
+                );
+            }
         } else {
             // New Person
             DoctorPersonRequest personRequest = doctorRequest.getPerson();
@@ -123,6 +127,8 @@ public class DoctorService {
 
         DoctorProfile savedDoctor = doctorProfileRepository.save(doctor);
 
-        return toResponse(savedDoctor);
+        return
+
+                toResponse(savedDoctor);
     }
 }

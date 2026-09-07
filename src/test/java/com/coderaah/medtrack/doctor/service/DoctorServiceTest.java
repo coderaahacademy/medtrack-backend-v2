@@ -4,8 +4,8 @@ import com.coderaah.medtrack.doctor.domain.DoctorProfile;
 import com.coderaah.medtrack.doctor.dto.DoctorPersonRequest;
 import com.coderaah.medtrack.doctor.dto.DoctorRequest;
 import com.coderaah.medtrack.doctor.dto.DoctorResponse;
-import com.coderaah.medtrack.doctor.exception.DoctorNotFoundException;
-import com.coderaah.medtrack.doctor.exception.DuplicateLicenseNumberException;
+import com.coderaah.medtrack.doctor.dto.DoctorUpdateRequest;
+import com.coderaah.medtrack.doctor.exception.*;
 import com.coderaah.medtrack.doctor.repository.DoctorProfileRepository;
 import com.coderaah.medtrack.identity.domain.Person;
 import com.coderaah.medtrack.identity.repository.PersonRepository;
@@ -113,7 +113,7 @@ public class DoctorServiceTest {
 
         doctor.setPerson(person);
 
-        DoctorRequest request = new DoctorRequest();
+        DoctorUpdateRequest request = new DoctorUpdateRequest();
         request.setLicenseNumber("Lic-No-123");
         request.setProfessionalPhone("+982144807811");
         request.setTimeZone("Iran/Tehran");
@@ -150,6 +150,9 @@ public class DoctorServiceTest {
 
         when(personRepository.findById(1L))
                 .thenReturn(Optional.of(person));
+
+        when(doctorProfileRepository.existsByPersonId(1L))
+                .thenReturn(false);
 
         when(doctorProfileRepository.save(any(DoctorProfile.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -203,5 +206,107 @@ public class DoctorServiceTest {
 
         verify(personRepository).save(any(Person.class));
         verify(doctorProfileRepository).save(any(DoctorProfile.class));
+    }
+
+    @Test
+    void registerDoctor_shouldThrowException_whenPersonAlreadyHasDoctorProfile() {
+
+        // Arrange
+        Person person = new Person();
+        person.setFirstName("Nastaran");
+        person.setLastName("Seife");
+
+        DoctorRequest request = new DoctorRequest();
+        request.setPersonId(1L);
+        request.setLicenseNumber("Lic-No-123");
+
+        when(doctorProfileRepository.existsByLicenseNumber("Lic-No-123"))
+                .thenReturn(false);
+
+        when(personRepository.findById(1L))
+                .thenReturn(Optional.of(person));
+
+        when(doctorProfileRepository.existsByPersonId(1L))
+                .thenReturn(true);
+
+        // Act & Assert
+        assertThrows(
+                DuplicateDoctorPersonException.class,
+                () -> doctorService.registerDoctor(request)
+        );
+
+        verify(doctorProfileRepository, never())
+                .save(any(DoctorProfile.class));
+    }
+
+    @Test
+    void registerDoctor_shouldThrowException_whenBothPersonIdAndPersonAreProvided() {
+
+        // Arrange
+        DoctorPersonRequest personRequest = new DoctorPersonRequest();
+        personRequest.setFirstName("Nastaran");
+        personRequest.setLastName("Seife");
+
+        DoctorRequest request = new DoctorRequest();
+        request.setPersonId(1L);
+        request.setPerson(personRequest);
+        request.setLicenseNumber("Lic-No-123");
+
+        when(doctorProfileRepository.existsByLicenseNumber("Lic-No-123"))
+                .thenReturn(false);
+
+        // Act & Assert
+        assertThrows(
+                InvalidDoctorRequestException.class,
+                () -> doctorService.registerDoctor(request)
+        );
+
+        verify(personRepository, never()).save(any(Person.class));
+        verify(doctorProfileRepository, never()).save(any(DoctorProfile.class));
+    }
+
+    @Test
+    void registerDoctor_shouldThrowException_whenNeitherPersonIdNorPersonIsProvided() {
+
+        // Arrange
+        DoctorRequest request = new DoctorRequest();
+        request.setLicenseNumber("Lic-No-123");
+
+        when(doctorProfileRepository.existsByLicenseNumber("Lic-No-123"))
+                .thenReturn(false);
+
+        // Act & Assert
+        assertThrows(
+                InvalidDoctorRequestException.class,
+                () -> doctorService.registerDoctor(request)
+        );
+
+        verify(personRepository, never()).save(any(Person.class));
+        verify(doctorProfileRepository, never()).save(any(DoctorProfile.class));
+    }
+
+    @Test
+    void registerDoctor_shouldThrowException_whenPersonDoesNotExist() {
+
+        // Arrange
+
+        DoctorRequest request = new DoctorRequest();
+        request.setPersonId(99L);
+        request.setLicenseNumber("Lic-No-123");
+
+        when(doctorProfileRepository.existsByLicenseNumber("Lic-No-123"))
+                .thenReturn(false);
+
+        when(personRepository.findById(99L))
+                .thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(
+                DoctorPersonNotFoundException.class,
+                () -> doctorService.registerDoctor(request)
+        );
+
+        verify(personRepository, never()).save(any(Person.class));
+        verify(doctorProfileRepository, never()).save(any(DoctorProfile.class));
     }
 }

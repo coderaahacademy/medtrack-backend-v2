@@ -1,19 +1,24 @@
 package com.coderaah.medtrack.doctor.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
 public class DoctorPersonRequest {
 
     @NotBlank
-    String firstName;
+    @Size(max = 100)
+    private String firstName;
 
     @NotBlank
-    String lastName;
+    @Size(max = 100)
+    private String lastName;
 
-    LocalDate birthDate;
-    String phone;
+    private LocalDate birthDate;
+
+    @Size(max = 50)
+    private String phone;
 
     // Getters
 

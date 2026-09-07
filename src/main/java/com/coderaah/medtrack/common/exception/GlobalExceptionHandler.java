@@ -1,9 +1,6 @@
 package com.coderaah.medtrack.common.exception;
 
-import com.coderaah.medtrack.doctor.exception.DoctorNotFoundException;
-import com.coderaah.medtrack.doctor.exception.DoctorPersonNotFoundException;
-import com.coderaah.medtrack.doctor.exception.DuplicateLicenseNumberException;
-import com.coderaah.medtrack.doctor.exception.InvalidDoctorRequestException;
+import com.coderaah.medtrack.doctor.exception.*;
 import com.coderaah.medtrack.patient.exception.DuplicateMedicalRecordNumberException;
 import com.coderaah.medtrack.patient.exception.PatientNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -38,6 +35,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DuplicateLicenseNumberException.class)
     public ResponseEntity<String> handleDuplicateLicenseNumber(DuplicateLicenseNumberException exception) {
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(DuplicateDoctorPersonException.class)
+    public ResponseEntity<String> handleDuplicateDoctorPerson(DuplicateDoctorPersonException exception) {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exception.getMessage());
     }

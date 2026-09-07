@@ -1,18 +1,17 @@
 package com.coderaah.medtrack.doctor.dto;
 
+import jakarta.validation.constraints.NotNull;
+
 public class DoctorStatusRequest {
-    boolean active;
 
-    // Getter
+    @NotNull
+    private Boolean active;
 
-    public boolean isActive() {
+    public Boolean getActive() {
         return active;
     }
 
-    // Setter
-
-
-    public void setActive(boolean active) {
+    public void setActive(Boolean active) {
         this.active = active;
     }
 }
