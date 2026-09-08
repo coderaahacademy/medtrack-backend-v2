@@ -32,9 +32,9 @@ public class DoctorAvailabilityController {
             @PathVariable Long doctorId,
             @Valid @RequestBody DoctorAvailabilityRuleRequest request) {
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(
-                availabilityService.addRule(doctorId, request)
-        );
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(availabilityService.addRule(doctorId, request));
     }
 
     @GetMapping("/availability")
@@ -76,12 +76,14 @@ public class DoctorAvailabilityController {
             @PathVariable Long doctorId,
             @Valid @RequestBody DoctorScheduleExceptionRequest request) {
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(
-                exceptionService.createException(
-                        doctorId,
-                        request
-                )
-        );
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(
+                        exceptionService.createException(
+                                doctorId,
+                                request
+                        )
+                );
     }
 
     @GetMapping("/schedule-exceptions")
@@ -98,7 +100,10 @@ public class DoctorAvailabilityController {
             @PathVariable Long doctorId,
             @PathVariable Long exceptionId) {
 
-        exceptionService.cancelException(doctorId, exceptionId);
+        exceptionService.cancelException(
+                doctorId,
+                exceptionId
+        );
 
         return ResponseEntity.noContent().build();
     }
