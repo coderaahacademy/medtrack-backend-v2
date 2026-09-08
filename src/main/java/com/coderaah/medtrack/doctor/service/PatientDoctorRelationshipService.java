@@ -1,14 +1,19 @@
 package com.coderaah.medtrack.doctor.service;
 
-import com.coderaah.medtrack.common.exception.ConflictException;
-import com.coderaah.medtrack.common.exception.ResourceNotFoundException;
 import com.coderaah.medtrack.doctor.domain.DoctorProfile;
 import com.coderaah.medtrack.doctor.domain.DoctorRelationshipType;
 import com.coderaah.medtrack.doctor.domain.PatientDoctorRelationship;
 import com.coderaah.medtrack.doctor.dto.CreatePatientDoctorRelationshipRequest;
+import com.coderaah.medtrack.doctor.dto.PatientDoctorRelationshipResponse;
+import com.coderaah.medtrack.doctor.exception.ActiveFamilyDoctorAlreadyExistsException;
+import com.coderaah.medtrack.doctor.exception.DoctorNotFoundException;
+import com.coderaah.medtrack.doctor.exception.PatientDoctorRelationshipNotFoundException;
+import com.coderaah.medtrack.doctor.exception.RelationshipAlreadyEndedException;
+import com.coderaah.medtrack.doctor.repository.DoctorProfileRepository;
 import com.coderaah.medtrack.doctor.repository.PatientDoctorRelationshipRepository;
 import com.coderaah.medtrack.patient.domain.PatientProfile;
-import jakarta.persistence.EntityManager;
+import com.coderaah.medtrack.patient.exception.PatientNotFoundException;
+import com.coderaah.medtrack.patient.repository.PatientProfileRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -19,68 +24,68 @@ import org.springframework.transaction.annotation.Transactional;
 public class PatientDoctorRelationshipService {
 
     private final PatientDoctorRelationshipRepository relationshipRepository;
-    private final EntityManager entityManager;
+    private final PatientProfileRepository patientProfileRepository;
+    private final DoctorProfileRepository doctorProfileRepository;
 
-    public PatientDoctorRelationshipService(PatientDoctorRelationshipRepository relationshipRepository, EntityManager entityManager) {
+    public PatientDoctorRelationshipService(PatientDoctorRelationshipRepository relationshipRepository,
+                                            PatientProfileRepository patientProfileRepository,
+                                            DoctorProfileRepository doctorProfileRepository) {
         this.relationshipRepository = relationshipRepository;
-        this.entityManager = entityManager;
+        this.patientProfileRepository = patientProfileRepository;
+        this.doctorProfileRepository = doctorProfileRepository;
     }
 
-    public PatientDoctorRelationship assign(Long patientId, CreatePatientDoctorRelationshipRequest request) {
-        PatientProfile patient = findPatientOrThrow(patientId);
-        DoctorProfile doctor = findDoctorOrThrow(request.doctorId());
+    public PatientDoctorRelationshipResponse assign(Long patientId, CreatePatientDoctorRelationshipRequest request) {
+        PatientProfile patient = patientProfileRepository.findById(patientId)
+                .orElseThrow(() -> new PatientNotFoundException("Patient " + patientId + " not found"));
+        DoctorProfile doctor = doctorProfileRepository.findById(request.doctorId())
+                .orElseThrow(() -> new DoctorNotFoundException("Doctor " + request.doctorId() + " not found"));
 
         if (request.relationshipType() == DoctorRelationshipType.FAMILY_DOCTOR && hasActiveFamilyDoctor(patientId)) {
-            throw new ConflictException("Patient " + patientId + " already has an active family doctor");
+            throw new ActiveFamilyDoctorAlreadyExistsException("Patient " + patientId + " already has an active family doctor");
         }
 
-        PatientDoctorRelationship relationship =
-                new PatientDoctorRelationship(patient, doctor, request.relationshipType(), LocalDateTime.now());
-        return relationshipRepository.save(relationship);
+        PatientDoctorRelationship saved = relationshipRepository.save(
+                new PatientDoctorRelationship(patient, doctor, request.relationshipType(), LocalDateTime.now()));
+        return PatientDoctorRelationshipResponse.from(saved);
     }
 
     @Transactional(readOnly = true)
-    public List<PatientDoctorRelationship> findActiveDoctorsForPatient(Long patientId) {
-        findPatientOrThrow(patientId);
-        return relationshipRepository.findByPatient_IdAndActiveTrue(patientId);
+    public List<PatientDoctorRelationshipResponse> findActiveDoctorsForPatient(Long patientId) {
+        if (!patientProfileRepository.existsById(patientId)) {
+            throw new PatientNotFoundException("Patient " + patientId + " not found");
+        }
+        return relationshipRepository.findByPatient_IdAndActiveTrue(patientId).stream()
+                .map(PatientDoctorRelationshipResponse::from)
+                .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<PatientDoctorRelationship> findActivePatientsForDoctor(Long doctorId) {
-        findDoctorOrThrow(doctorId);
-        return relationshipRepository.findByDoctor_IdAndActiveTrue(doctorId);
+    public List<PatientDoctorRelationshipResponse> findActivePatientsForDoctor(Long doctorId) {
+        if (!doctorProfileRepository.existsById(doctorId)) {
+            throw new DoctorNotFoundException("Doctor " + doctorId + " not found");
+        }
+        return relationshipRepository.findByDoctor_IdAndActiveTrue(doctorId).stream()
+                .map(PatientDoctorRelationshipResponse::from)
+                .toList();
     }
 
-    public PatientDoctorRelationship end(Long relationshipId) {
+    public PatientDoctorRelationshipResponse end(Long relationshipId) {
         PatientDoctorRelationship relationship = relationshipRepository.findById(relationshipId)
-                .orElseThrow(() -> new ResourceNotFoundException("Patient-doctor relationship " + relationshipId + " not found"));
+                .orElseThrow(() -> new PatientDoctorRelationshipNotFoundException(
+                        "Patient-doctor relationship " + relationshipId + " not found"));
         if (!relationship.isActive()) {
-            throw new ConflictException("Patient-doctor relationship " + relationshipId + " has already ended");
+            throw new RelationshipAlreadyEndedException(
+                    "Patient-doctor relationship " + relationshipId + " has already ended");
         }
         relationship.setActive(false);
         relationship.setEndedAt(LocalDateTime.now());
-        return relationshipRepository.save(relationship);
+        return PatientDoctorRelationshipResponse.from(relationshipRepository.save(relationship));
     }
 
     private boolean hasActiveFamilyDoctor(Long patientId) {
         return relationshipRepository
                 .findByPatient_IdAndRelationshipTypeAndActiveTrue(patientId, DoctorRelationshipType.FAMILY_DOCTOR)
                 .isPresent();
-    }
-
-    private PatientProfile findPatientOrThrow(Long patientId) {
-        PatientProfile patient = entityManager.find(PatientProfile.class, patientId);
-        if (patient == null) {
-            throw new ResourceNotFoundException("Patient " + patientId + " not found");
-        }
-        return patient;
-    }
-
-    private DoctorProfile findDoctorOrThrow(Long doctorId) {
-        DoctorProfile doctor = entityManager.find(DoctorProfile.class, doctorId);
-        if (doctor == null) {
-            throw new ResourceNotFoundException("Doctor " + doctorId + " not found");
-        }
-        return doctor;
     }
 }

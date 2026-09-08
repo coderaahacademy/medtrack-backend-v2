@@ -1,8 +1,9 @@
 package com.coderaah.medtrack.doctor.service;
 
-import com.coderaah.medtrack.common.exception.ConflictException;
 import com.coderaah.medtrack.doctor.domain.Specialty;
 import com.coderaah.medtrack.doctor.dto.CreateSpecialtyRequest;
+import com.coderaah.medtrack.doctor.dto.SpecialtyResponse;
+import com.coderaah.medtrack.doctor.exception.DuplicateSpecialtyCodeException;
 import com.coderaah.medtrack.doctor.repository.SpecialtyRepository;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -18,15 +19,16 @@ public class SpecialtyService {
         this.specialtyRepository = specialtyRepository;
     }
 
-    public Specialty create(CreateSpecialtyRequest request) {
+    public SpecialtyResponse create(CreateSpecialtyRequest request) {
         if (specialtyRepository.existsByCodeIgnoreCase(request.code())) {
-            throw new ConflictException("A specialty with code '" + request.code() + "' already exists");
+            throw new DuplicateSpecialtyCodeException("A specialty with code '" + request.code() + "' already exists");
         }
-        return specialtyRepository.save(new Specialty(request.code(), request.name()));
+        Specialty saved = specialtyRepository.save(new Specialty(request.code(), request.name()));
+        return SpecialtyResponse.from(saved);
     }
 
     @Transactional(readOnly = true)
-    public List<Specialty> findAll() {
-        return specialtyRepository.findAll();
+    public List<SpecialtyResponse> findAll() {
+        return specialtyRepository.findAll().stream().map(SpecialtyResponse::from).toList();
     }
 }

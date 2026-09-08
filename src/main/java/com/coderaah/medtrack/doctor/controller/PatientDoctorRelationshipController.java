@@ -28,27 +28,21 @@ public class PatientDoctorRelationshipController {
     @PostMapping("/patients/{patientId}/doctors")
     public ResponseEntity<PatientDoctorRelationshipResponse> assign(@PathVariable Long patientId,
                                                                     @Valid @RequestBody CreatePatientDoctorRelationshipRequest request) {
-        PatientDoctorRelationshipResponse response =
-                PatientDoctorRelationshipResponse.from(relationshipService.assign(patientId, request));
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(relationshipService.assign(patientId, request));
     }
 
     @GetMapping("/patients/{patientId}/doctors")
     public List<PatientDoctorRelationshipResponse> findDoctorsForPatient(@PathVariable Long patientId) {
-        return relationshipService.findActiveDoctorsForPatient(patientId).stream()
-                .map(PatientDoctorRelationshipResponse::from)
-                .toList();
+        return relationshipService.findActiveDoctorsForPatient(patientId);
     }
 
     @GetMapping("/doctors/{doctorId}/patients")
     public List<PatientDoctorRelationshipResponse> findPatientsForDoctor(@PathVariable Long doctorId) {
-        return relationshipService.findActivePatientsForDoctor(doctorId).stream()
-                .map(PatientDoctorRelationshipResponse::from)
-                .toList();
+        return relationshipService.findActivePatientsForDoctor(doctorId);
     }
 
     @PatchMapping("/patient-doctor-relationships/{id}/end")
     public PatientDoctorRelationshipResponse end(@PathVariable Long id) {
-        return PatientDoctorRelationshipResponse.from(relationshipService.end(id));
+        return relationshipService.end(id);
     }
 }

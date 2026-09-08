@@ -25,12 +25,12 @@ public class SpecialtyController {
 
     @PostMapping
     public ResponseEntity<SpecialtyResponse> create(@Valid @RequestBody CreateSpecialtyRequest request) {
-        SpecialtyResponse response = SpecialtyResponse.from(specialtyService.create(request));
+        SpecialtyResponse response = specialtyService.create(request);
         return ResponseEntity.created(URI.create("/api/specialties/" + response.id())).body(response);
     }
 
     @GetMapping
     public List<SpecialtyResponse> findAll() {
-        return specialtyService.findAll().stream().map(SpecialtyResponse::from).toList();
+        return specialtyService.findAll();
     }
 }

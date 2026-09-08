@@ -6,9 +6,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.coderaah.medtrack.common.exception.ConflictException;
 import com.coderaah.medtrack.doctor.domain.Specialty;
 import com.coderaah.medtrack.doctor.dto.CreateSpecialtyRequest;
+import com.coderaah.medtrack.doctor.exception.DuplicateSpecialtyCodeException;
+import com.coderaah.medtrack.doctor.dto.SpecialtyResponse;
 import com.coderaah.medtrack.doctor.repository.SpecialtyRepository;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +31,7 @@ class SpecialtyServiceTest {
         when(specialtyRepository.existsByCodeIgnoreCase("CARDIO")).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(new CreateSpecialtyRequest("CARDIO", "Cardiology")))
-                .isInstanceOf(ConflictException.class);
+                .isInstanceOf(DuplicateSpecialtyCodeException.class);
     }
 
     @Test
@@ -38,11 +39,11 @@ class SpecialtyServiceTest {
         when(specialtyRepository.existsByCodeIgnoreCase("CARDIO")).thenReturn(false);
         when(specialtyRepository.save(any(Specialty.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Specialty result = service.create(new CreateSpecialtyRequest("CARDIO", "Cardiology"));
+        SpecialtyResponse result = service.create(new CreateSpecialtyRequest("CARDIO", "Cardiology"));
 
-        assertThat(result.getCode()).isEqualTo("CARDIO");
-        assertThat(result.getName()).isEqualTo("Cardiology");
-        assertThat(result.isActive()).isTrue();
+        assertThat(result.code()).isEqualTo("CARDIO");
+        assertThat(result.name()).isEqualTo("Cardiology");
+        assertThat(result.active()).isTrue();
     }
 
     @Test
@@ -51,6 +52,10 @@ class SpecialtyServiceTest {
         Specialty peds = new Specialty("PEDS", "Pediatrics");
         when(specialtyRepository.findAll()).thenReturn(List.of(cardio, peds));
 
-        assertThat(service.findAll()).containsExactly(cardio, peds);
+        List<SpecialtyResponse> result = service.findAll();
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).code()).isEqualTo("CARDIO");
+        assertThat(result.get(1).code()).isEqualTo("PEDS");
     }
 }

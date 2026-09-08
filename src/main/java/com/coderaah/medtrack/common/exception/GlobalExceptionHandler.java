@@ -1,14 +1,21 @@
 package com.coderaah.medtrack.common.exception;
 
+import com.coderaah.medtrack.doctor.exception.ActiveFamilyDoctorAlreadyExistsException;
 import com.coderaah.medtrack.doctor.exception.AvailabilityRuleNotFoundException;
 import com.coderaah.medtrack.doctor.exception.CannotCancelPastScheduleException;
 import com.coderaah.medtrack.doctor.exception.DoctorNotFoundException;
 import com.coderaah.medtrack.doctor.exception.DoctorPersonNotFoundException;
+import com.coderaah.medtrack.doctor.exception.DoctorSpecialtyNotFoundException;
 import com.coderaah.medtrack.doctor.exception.DuplicateDoctorPersonException;
+import com.coderaah.medtrack.doctor.exception.DuplicateDoctorSpecialtyException;
 import com.coderaah.medtrack.doctor.exception.DuplicateLicenseNumberException;
+import com.coderaah.medtrack.doctor.exception.DuplicateSpecialtyCodeException;
 import com.coderaah.medtrack.doctor.exception.InvalidDoctorRequestException;
 import com.coderaah.medtrack.doctor.exception.InvalidScheduleTimeRangeException;
+import com.coderaah.medtrack.doctor.exception.PatientDoctorRelationshipNotFoundException;
+import com.coderaah.medtrack.doctor.exception.RelationshipAlreadyEndedException;
 import com.coderaah.medtrack.doctor.exception.ScheduleExceptionNotFoundException;
+import com.coderaah.medtrack.doctor.exception.SpecialtyNotFoundException;
 import com.coderaah.medtrack.patient.exception.DuplicateMedicalRecordNumberException;
 import com.coderaah.medtrack.patient.exception.PatientNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -115,6 +122,69 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(SpecialtyNotFoundException.class)
+    public ResponseEntity<String> handleSpecialtyNotFound(
+            SpecialtyNotFoundException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(DuplicateSpecialtyCodeException.class)
+    public ResponseEntity<String> handleDuplicateSpecialtyCode(
+            DuplicateSpecialtyCodeException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(DuplicateDoctorSpecialtyException.class)
+    public ResponseEntity<String> handleDuplicateDoctorSpecialty(
+            DuplicateDoctorSpecialtyException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(DoctorSpecialtyNotFoundException.class)
+    public ResponseEntity<String> handleDoctorSpecialtyNotFound(
+            DoctorSpecialtyNotFoundException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(PatientDoctorRelationshipNotFoundException.class)
+    public ResponseEntity<String> handlePatientDoctorRelationshipNotFound(
+            PatientDoctorRelationshipNotFoundException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(ActiveFamilyDoctorAlreadyExistsException.class)
+    public ResponseEntity<String> handleActiveFamilyDoctorAlreadyExists(
+            ActiveFamilyDoctorAlreadyExistsException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(RelationshipAlreadyEndedException.class)
+    public ResponseEntity<String> handleRelationshipAlreadyEnded(
+            RelationshipAlreadyEndedException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
                 .body(exception.getMessage());
     }
 }

@@ -29,13 +29,12 @@ public class DoctorSpecialtyController {
     @PostMapping
     public ResponseEntity<DoctorSpecialtyResponse> assign(@PathVariable Long doctorId,
                                                           @Valid @RequestBody AssignDoctorSpecialtyRequest request) {
-        DoctorSpecialtyResponse response = DoctorSpecialtyResponse.from(doctorSpecialtyService.assign(doctorId, request));
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(doctorSpecialtyService.assign(doctorId, request));
     }
 
     @GetMapping
     public List<DoctorSpecialtyResponse> findByDoctor(@PathVariable Long doctorId) {
-        return doctorSpecialtyService.findByDoctor(doctorId).stream().map(DoctorSpecialtyResponse::from).toList();
+        return doctorSpecialtyService.findByDoctor(doctorId);
     }
 
     @DeleteMapping("/{specialtyId}")
