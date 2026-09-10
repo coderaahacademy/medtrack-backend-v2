@@ -11,6 +11,7 @@ import com.coderaah.medtrack.common.exception.GlobalExceptionHandler;
 import com.coderaah.medtrack.doctor.dto.CreateSpecialtyRequest;
 import com.coderaah.medtrack.doctor.dto.SpecialtyResponse;
 import com.coderaah.medtrack.doctor.exception.DuplicateSpecialtyCodeException;
+import com.coderaah.medtrack.doctor.exception.DuplicateSpecialtyNameException;
 import com.coderaah.medtrack.doctor.service.SpecialtyService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
@@ -68,6 +69,17 @@ class SpecialtyControllerTest {
         mockMvc.perform(post("/api/specialties")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new CreateSpecialtyRequest("CARDIO", "Cardiology"))))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void create_returns409WhenNameAlreadyExists() throws Exception {
+        when(specialtyService.create(any()))
+                .thenThrow(new DuplicateSpecialtyNameException("A specialty with name 'Cardiology' already exists"));
+
+        mockMvc.perform(post("/api/specialties")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CreateSpecialtyRequest("CARD2", "Cardiology"))))
                 .andExpect(status().isConflict());
     }
 

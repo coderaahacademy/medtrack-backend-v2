@@ -10,6 +10,7 @@ import com.coderaah.medtrack.doctor.exception.DuplicateDoctorPersonException;
 import com.coderaah.medtrack.doctor.exception.DuplicateDoctorSpecialtyException;
 import com.coderaah.medtrack.doctor.exception.DuplicateLicenseNumberException;
 import com.coderaah.medtrack.doctor.exception.DuplicateSpecialtyCodeException;
+import com.coderaah.medtrack.doctor.exception.DuplicateSpecialtyNameException;
 import com.coderaah.medtrack.doctor.exception.InvalidDoctorRequestException;
 import com.coderaah.medtrack.doctor.exception.InvalidScheduleTimeRangeException;
 import com.coderaah.medtrack.doctor.exception.PatientDoctorRelationshipNotFoundException;
@@ -137,6 +138,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DuplicateSpecialtyCodeException.class)
     public ResponseEntity<String> handleDuplicateSpecialtyCode(
             DuplicateSpecialtyCodeException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(DuplicateSpecialtyNameException.class)
+    public ResponseEntity<String> handleDuplicateSpecialtyName(
+            DuplicateSpecialtyNameException exception) {
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.coderaah.medtrack.doctor.domain.Specialty;
 import com.coderaah.medtrack.doctor.dto.CreateSpecialtyRequest;
 import com.coderaah.medtrack.doctor.exception.DuplicateSpecialtyCodeException;
+import com.coderaah.medtrack.doctor.exception.DuplicateSpecialtyNameException;
 import com.coderaah.medtrack.doctor.dto.SpecialtyResponse;
 import com.coderaah.medtrack.doctor.repository.SpecialtyRepository;
 import java.util.List;
@@ -32,6 +33,15 @@ class SpecialtyServiceTest {
 
         assertThatThrownBy(() -> service.create(new CreateSpecialtyRequest("CARDIO", "Cardiology")))
                 .isInstanceOf(DuplicateSpecialtyCodeException.class);
+    }
+
+    @Test
+    void create_rejectsDuplicateName() {
+        when(specialtyRepository.existsByCodeIgnoreCase("CARD2")).thenReturn(false);
+        when(specialtyRepository.existsByNameIgnoreCase("Cardiology")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.create(new CreateSpecialtyRequest("CARD2", "Cardiology")))
+                .isInstanceOf(DuplicateSpecialtyNameException.class);
     }
 
     @Test
