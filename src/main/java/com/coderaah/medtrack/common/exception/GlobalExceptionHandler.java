@@ -9,6 +9,8 @@ import com.coderaah.medtrack.doctor.exception.DuplicateLicenseNumberException;
 import com.coderaah.medtrack.doctor.exception.InvalidDoctorRequestException;
 import com.coderaah.medtrack.doctor.exception.InvalidScheduleTimeRangeException;
 import com.coderaah.medtrack.doctor.exception.ScheduleExceptionNotFoundException;
+import com.coderaah.medtrack.pharmacy.exception.DuplicatePharmacyLicenseNumberException;
+import com.coderaah.medtrack.pharmacy.exception.PharmacyNotFoundException;
 import com.coderaah.medtrack.patient.exception.DuplicateMedicalRecordNumberException;
 import com.coderaah.medtrack.patient.exception.PatientNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -112,6 +114,24 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DuplicateMedicalRecordNumberException.class)
     public ResponseEntity<String> handleDuplicateMedicalRecordNumber(
             DuplicateMedicalRecordNumberException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(PharmacyNotFoundException.class)
+    public ResponseEntity<String> handlePharmacyNotFound(
+            PharmacyNotFoundException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(DuplicatePharmacyLicenseNumberException.class)
+    public ResponseEntity<String> handleDuplicatePharmacyLicenseNumber(
+            DuplicatePharmacyLicenseNumberException exception) {
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
