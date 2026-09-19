@@ -3,6 +3,7 @@ package com.coderaah.medtrack.patient.dto;
 import com.coderaah.medtrack.patient.domain.PatientConditionStatus;
 import jakarta.validation.constraints.NotNull;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public class ConditionResponse {
@@ -10,7 +11,7 @@ public class ConditionResponse {
         private Long patientId;
         private String conditionName;
         private String conditionCode;
-        private LocalDateTime diagnosedAt;
+        private LocalDate diagnosedAt;
         private PatientConditionStatus status;
         private String notes;
         private LocalDateTime createdAt;
@@ -44,11 +45,11 @@ public class ConditionResponse {
         public void setConditionCode(String conditionCode){
             this.conditionCode=conditionCode;
         }
-        public LocalDateTime getDiagnosedAt(){
+        public LocalDate getDiagnosedAt(){
             return diagnosedAt;
         }
 
-        public void setDiagnosedAt(LocalDateTime diagnosedAt) {
+        public void setDiagnosedAt(LocalDate diagnosedAt) {
         this.diagnosedAt = diagnosedAt;
         }
 

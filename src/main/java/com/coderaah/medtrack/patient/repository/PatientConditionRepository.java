@@ -10,6 +10,6 @@ import java.util.Optional;
 public interface PatientConditionRepository extends JpaRepository<PatientCondition, Long> {
     List<PatientCondition> findByPatientId(Long patientId);
     List<PatientCondition> findByPatientIdAndStatus(Long patientId, PatientConditionStatus status);
-    Optional<PatientCondition> findByIdAndPatientI(Long Id,Long patientId);
+    Optional<PatientCondition> findByIdAndPatientId(Long Id,Long patientId);
 
 }

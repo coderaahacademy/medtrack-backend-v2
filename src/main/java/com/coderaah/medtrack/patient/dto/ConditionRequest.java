@@ -4,6 +4,7 @@ import com.coderaah.medtrack.patient.domain.PatientConditionStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public class ConditionRequest {
@@ -13,7 +14,7 @@ public class ConditionRequest {
 
     @Size (max =100)
     private String conditionCode;
-    private LocalDateTime diagnosedAt;
+    private LocalDate diagnosedAt;
     private PatientConditionStatus status;
     private String notes;
 
@@ -31,10 +32,10 @@ public class ConditionRequest {
     public void setConditionCode(String conditionCode) {
         this.conditionCode = conditionCode;
     }
-    public LocalDateTime getDiagnosedAt(){
+    public LocalDate getDiagnosedAt(){
         return diagnosedAt;
     }
-    public void setDiagnosedAt(LocalDateTime diagnosedAt){
+    public void setDiagnosedAt(LocalDate diagnosedAt){
         this.diagnosedAt=diagnosedAt;
     }
 
