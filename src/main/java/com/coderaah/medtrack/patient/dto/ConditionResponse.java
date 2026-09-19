@@ -6,8 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
 public class ConditionResponse {
-        private long id;
-        private long patientId;
+        private Long id;
+        private Long patientId;
         private String conditionName;
         private String conditionCode;
         private LocalDateTime diagnosedAt;
@@ -17,18 +17,18 @@ public class ConditionResponse {
         private LocalDateTime updatedAt;
 
 
-        public long getId(){
+        public Long getId(){
             return id;
         }
-        public void setId(long id){
+        public void setId(Long id){
             this.id=id;
         }
 
-        public long getPatientId() {
+        public Long getPatientId() {
             return patientId;
         }
 
-        public void setPatientId(long patientId) {
+        public void setPatientId(Long patientId) {
             this.patientId = patientId;
         }
         public String getConditionName(){
@@ -37,6 +37,7 @@ public class ConditionResponse {
         public void setConditionName(String conditionName){
             this.conditionName=conditionName;
         }
+
         public String getConditionCode(){
             return conditionCode;
         }
