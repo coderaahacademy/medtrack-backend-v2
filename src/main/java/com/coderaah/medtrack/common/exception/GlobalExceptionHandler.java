@@ -17,6 +17,7 @@ import com.coderaah.medtrack.doctor.exception.PatientDoctorRelationshipNotFoundE
 import com.coderaah.medtrack.doctor.exception.RelationshipAlreadyEndedException;
 import com.coderaah.medtrack.doctor.exception.ScheduleExceptionNotFoundException;
 import com.coderaah.medtrack.doctor.exception.SpecialtyNotFoundException;
+import com.coderaah.medtrack.medication.exception.MedicationNotFoundException;
 import com.coderaah.medtrack.patient.exception.DuplicateMedicalRecordNumberException;
 import com.coderaah.medtrack.patient.exception.PatientNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -123,6 +124,13 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(MedicationNotFoundException.class)
+    public ResponseEntity<String> handleMedicationNotFound(MedicationNotFoundException exception){
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
                 .body(exception.getMessage());
     }
 
