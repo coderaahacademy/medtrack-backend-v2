@@ -17,7 +17,8 @@ import com.coderaah.medtrack.doctor.exception.PatientDoctorRelationshipNotFoundE
 import com.coderaah.medtrack.doctor.exception.RelationshipAlreadyEndedException;
 import com.coderaah.medtrack.doctor.exception.ScheduleExceptionNotFoundException;
 import com.coderaah.medtrack.doctor.exception.SpecialtyNotFoundException;
-import com.coderaah.medtrack.medication.exception.MedicationNotFoundException;
+import com.coderaah.medtrack.patient.exception.AllergyNotFoundException;
+import com.coderaah.medtrack.patient.exception.ConditionNotFoundException;
 import com.coderaah.medtrack.patient.exception.DuplicateMedicalRecordNumberException;
 import com.coderaah.medtrack.patient.exception.PatientNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -127,13 +128,6 @@ public class GlobalExceptionHandler {
                 .body(exception.getMessage());
     }
 
-    @ExceptionHandler(MedicationNotFoundException.class)
-    public ResponseEntity<String> handleMedicationNotFound(MedicationNotFoundException exception){
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(exception.getMessage());
-    }
-
     @ExceptionHandler(SpecialtyNotFoundException.class)
     public ResponseEntity<String> handleSpecialtyNotFound(
             SpecialtyNotFoundException exception) {
@@ -203,6 +197,20 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(AllergyNotFoundException.class)
+    public ResponseEntity<String> handleAllergyNotFound(AllergyNotFoundException exception) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(ConditionNotFoundException.class)
+    public ResponseEntity<String> handleConditionNotFound(ConditionNotFoundException exception) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
                 .body(exception.getMessage());
     }
 }
