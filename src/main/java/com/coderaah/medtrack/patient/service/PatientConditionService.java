@@ -91,7 +91,7 @@ public class PatientConditionService {
 
     private PatientProfile getPatientOrThrow(Long patientId) {
         return patientProfileRepository.findById(patientId)
-                .orElseThrow(() -> new PatientNotFoundException("Patient Not Found"));
+                .orElseThrow(() -> new PatientNotFoundException("Patient not found"));
     }
 
     private PatientCondition getConditionOrThrow(Long patientId, Long conditionId) {

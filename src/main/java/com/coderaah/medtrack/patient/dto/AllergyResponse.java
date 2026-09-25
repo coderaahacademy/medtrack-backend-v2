@@ -6,8 +6,8 @@ import com.coderaah.medtrack.patient.domain.AllergyStatus;
 import java.time.LocalDateTime;
 
 public class AllergyResponse {
-    private long id;
-    private long patientId;
+    private Long id;
+    private Long patientId;
     private String allergen;
     private String reaction;
     private AllergySeverity severity;
@@ -16,17 +16,17 @@ public class AllergyResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public long getId(){
+    public Long getId(){
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(Long id) {
         this.id = id;
     }
-    public long getPatientId(){
+    public Long getPatientId(){
         return patientId;
     }
-    public void setPatientId(long patientId){
+    public void setPatientId(Long patientId){
         this.patientId=patientId;
     }
 
