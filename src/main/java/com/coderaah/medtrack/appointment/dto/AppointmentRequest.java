@@ -1,17 +1,20 @@
-package com.coderaah.medtrack.appointment.dto.requestDto;
+package com.coderaah.medtrack.appointment.dto;
 
 import com.coderaah.medtrack.appointment.domain.AppointmentType;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 
-public class AppointmentRequestDto {
+public class AppointmentRequest {
     @NotNull
     private Long patientId;
     @NotNull
     private Long doctorId;
+    @Size(max = 255)
     private String location;
+    @Size(max = 255)
     private String reason;
     @NotNull
     private AppointmentType appointmentType;
@@ -22,7 +25,7 @@ public class AppointmentRequestDto {
     @Future
     private LocalDateTime scheduledEnd;
 
-    public AppointmentRequestDto() {
+    public AppointmentRequest() {
     }
 
 

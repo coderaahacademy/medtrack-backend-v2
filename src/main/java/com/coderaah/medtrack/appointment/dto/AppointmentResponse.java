@@ -1,4 +1,4 @@
-package com.coderaah.medtrack.appointment.dto.responeDto;
+package com.coderaah.medtrack.appointment.dto;
 
 
 import com.coderaah.medtrack.appointment.domain.AppointmentStatus;
@@ -6,7 +6,7 @@ import com.coderaah.medtrack.appointment.domain.AppointmentType;
 
 import java.time.LocalDateTime;
 
-public class AppointmentResponseDto {
+public class AppointmentResponse {
 
 
     private Long id;
@@ -22,7 +22,7 @@ public class AppointmentResponseDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public AppointmentResponseDto() {
+    public AppointmentResponse() {
     }
 
 

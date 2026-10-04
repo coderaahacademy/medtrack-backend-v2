@@ -3,14 +3,15 @@ package com.coderaah.medtrack.appointment.service;
 import com.coderaah.medtrack.appointment.domain.Appointment;
 import com.coderaah.medtrack.appointment.domain.AppointmentStatus;
 import com.coderaah.medtrack.appointment.domain.AppointmentStatusHistory;
-import com.coderaah.medtrack.appointment.dto.responeDto.AppointmentStatusHistoryResponeDto;
+import com.coderaah.medtrack.appointment.dto.AppointmentStatusHistoryResponse;
 import com.coderaah.medtrack.appointment.mapper.AppointmentStatusHistoryMapper;
 import com.coderaah.medtrack.appointment.repository.AppointmentStatusHistoryRepository;
 import com.coderaah.medtrack.identity.domain.UserAccount;
+import com.coderaah.medtrack.identity.exception.UserAccountNotFoundException;
 import com.coderaah.medtrack.identity.repository.UserAccountRepository;
-import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -21,6 +22,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -39,69 +41,67 @@ class AppointmentStatusHistoryServiceTest {
     @InjectMocks
     private AppointmentStatusHistoryService historyService;
 
-
-    // record
-
-
     @Test
-    void record_savesHistory_withResolvedActor() {
+    void record_savesHistoryWithOldStatusNewStatusReasonAndActor() {
         Appointment appointment = new Appointment();
         appointment.setId(1L);
         UserAccount actor = new UserAccount();
-
         when(userAccountRepository.findById(9L)).thenReturn(Optional.of(actor));
-        when(historyRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(historyRepository.save(any(AppointmentStatusHistory.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        AppointmentStatusHistory result = historyService.record(
-                appointment, AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED, 9L, null);
+        historyService.record(appointment, AppointmentStatus.CONFIRMED, AppointmentStatus.CANCELLED, 9L, "No longer needed");
 
-        assertThat(result.getAppointment()).isEqualTo(appointment);
-        assertThat(result.getOldStatus()).isEqualTo(AppointmentStatus.SCHEDULED);
-        assertThat(result.getNewStatus()).isEqualTo(AppointmentStatus.CONFIRMED);
-        assertThat(result.getChangedByUser()).isEqualTo(actor);
-
-        verify(historyRepository).save(any(AppointmentStatusHistory.class));
+        ArgumentCaptor<AppointmentStatusHistory> captor = ArgumentCaptor.forClass(AppointmentStatusHistory.class);
+        verify(historyRepository).save(captor.capture());
+        AppointmentStatusHistory saved = captor.getValue();
+        assertThat(saved.getAppointment()).isSameAs(appointment);
+        assertThat(saved.getOldStatus()).isEqualTo(AppointmentStatus.CONFIRMED);
+        assertThat(saved.getNewStatus()).isEqualTo(AppointmentStatus.CANCELLED);
+        assertThat(saved.getChangedByUser()).isSameAs(actor);
+        assertThat(saved.getReason()).isEqualTo("No longer needed");
     }
 
     @Test
-    void record_throws_whenActorNotFound() {
+    void record_allowsNullReason() {
+        when(userAccountRepository.findById(9L)).thenReturn(Optional.of(new UserAccount()));
+        when(historyRepository.save(any(AppointmentStatusHistory.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        AppointmentStatusHistory saved = historyService.record(
+                new Appointment(), AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED, 9L, null);
+
+        assertThat(saved.getReason()).isNull();
+    }
+
+    @Test
+    void record_throwsUserAccountNotFound_whenActorDoesNotExist() {
         when(userAccountRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> historyService.record(
                 new Appointment(), AppointmentStatus.SCHEDULED, AppointmentStatus.CANCELLED, 99L, "reason"))
-                .isInstanceOf(EntityNotFoundException.class);
+                .isInstanceOf(UserAccountNotFoundException.class);
 
-        verify(historyRepository, org.mockito.Mockito.never()).save(any());
+        verify(historyRepository, never()).save(any());
     }
 
-    // getHistoryForAppointment
-
-
-
     @Test
-    void getHistoryForAppointment_returnsMappedList() {
-        AppointmentStatusHistory h1 = new AppointmentStatusHistory();
-        AppointmentStatusHistory h2 = new AppointmentStatusHistory();
+    void getHistoryForAppointment_returnsMappedRecordsInRepositoryOrder() {
+        AppointmentStatusHistory first = new AppointmentStatusHistory();
+        AppointmentStatusHistory second = new AppointmentStatusHistory();
+        AppointmentStatusHistoryResponse firstResponse = new AppointmentStatusHistoryResponse();
+        AppointmentStatusHistoryResponse secondResponse = new AppointmentStatusHistoryResponse();
+        when(historyRepository.findByAppointmentIdOrderByChangedAtAsc(5L)).thenReturn(List.of(first, second));
+        when(historyMapper.toResponse(first)).thenReturn(firstResponse);
+        when(historyMapper.toResponse(second)).thenReturn(secondResponse);
 
-        when(historyRepository.findByAppointmentIdOrderByChangedAtAsc(5L))
-                .thenReturn(List.of(h1, h2));
-        when(historyMapper.convertToAppointmentStatusHistoryResponeDto(h1))
-                .thenReturn(new AppointmentStatusHistoryResponeDto());
-        when(historyMapper.convertToAppointmentStatusHistoryResponeDto(h2))
-                .thenReturn(new AppointmentStatusHistoryResponeDto());
-
-        List<AppointmentStatusHistoryResponeDto> result = historyService.getHistoryForAppointment(5L);
-
-        assertThat(result).hasSize(2);
+        assertThat(historyService.getHistoryForAppointment(5L)).containsExactly(firstResponse, secondResponse);
     }
 
     @Test
     void getHistoryForAppointment_returnsEmptyList_whenNoHistoryExists() {
-        when(historyRepository.findByAppointmentIdOrderByChangedAtAsc(6L))
-                .thenReturn(List.of());
+        when(historyRepository.findByAppointmentIdOrderByChangedAtAsc(6L)).thenReturn(List.of());
 
-        List<AppointmentStatusHistoryResponeDto> result = historyService.getHistoryForAppointment(6L);
-
-        assertThat(result).isEmpty();
+        assertThat(historyService.getHistoryForAppointment(6L)).isEmpty();
     }
 }

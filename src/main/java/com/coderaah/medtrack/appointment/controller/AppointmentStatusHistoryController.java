@@ -1,7 +1,8 @@
 package com.coderaah.medtrack.appointment.controller;
 
-import com.coderaah.medtrack.appointment.dto.responeDto.AppointmentStatusHistoryResponeDto;
+import com.coderaah.medtrack.appointment.dto.AppointmentStatusHistoryResponse;
 import com.coderaah.medtrack.appointment.service.AppointmentStatusHistoryService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,10 +20,8 @@ public class AppointmentStatusHistoryController {
         this.historyService = historyService;
     }
 
-
-    // GET /api/appointments/{appointmentId}/history
     @GetMapping("/{appointmentId}/history")
-    public List<AppointmentStatusHistoryResponeDto> getHistory(@PathVariable Long appointmentId) {
-        return historyService.getHistoryForAppointment(appointmentId);
+    public ResponseEntity<List<AppointmentStatusHistoryResponse>> getHistory(@PathVariable Long appointmentId) {
+        return ResponseEntity.ok(historyService.getHistoryForAppointment(appointmentId));
     }
 }

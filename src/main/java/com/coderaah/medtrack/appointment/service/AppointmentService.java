@@ -1,18 +1,27 @@
 package com.coderaah.medtrack.appointment.service;
+
 import com.coderaah.medtrack.appointment.domain.Appointment;
 import com.coderaah.medtrack.appointment.domain.AppointmentStatus;
-import com.coderaah.medtrack.appointment.dto.requestDto.AppointmentRequestDto;
-import com.coderaah.medtrack.appointment.dto.responeDto.AppointmentResponseDto;
+import com.coderaah.medtrack.appointment.dto.AppointmentRequest;
+import com.coderaah.medtrack.appointment.dto.AppointmentResponse;
+import com.coderaah.medtrack.appointment.exception.AppointmentNotFoundException;
+import com.coderaah.medtrack.appointment.exception.AppointmentOverlapException;
+import com.coderaah.medtrack.appointment.exception.CancellationReasonRequiredException;
+import com.coderaah.medtrack.appointment.exception.DoctorNotActiveException;
+import com.coderaah.medtrack.appointment.exception.DoctorNotAvailableException;
+import com.coderaah.medtrack.appointment.exception.InvalidAppointmentTimeException;
+import com.coderaah.medtrack.appointment.exception.InvalidStatusTransitionException;
 import com.coderaah.medtrack.appointment.mapper.AppointmentMapper;
 import com.coderaah.medtrack.appointment.repository.AppointmentRepository;
 import com.coderaah.medtrack.doctor.domain.DoctorProfile;
 import com.coderaah.medtrack.doctor.domain.ScheduleExceptionType;
+import com.coderaah.medtrack.doctor.exception.DoctorNotFoundException;
 import com.coderaah.medtrack.doctor.repository.DoctorAvailabilityRuleRepository;
 import com.coderaah.medtrack.doctor.repository.DoctorProfileRepository;
 import com.coderaah.medtrack.doctor.repository.DoctorScheduleExceptionRepository;
 import com.coderaah.medtrack.patient.domain.PatientProfile;
+import com.coderaah.medtrack.patient.exception.PatientNotFoundException;
 import com.coderaah.medtrack.patient.repository.PatientProfileRepository;
-import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +32,11 @@ import java.time.LocalTime;
 import java.util.List;
 
 @Service
+@Transactional
 public class AppointmentService {
+
+    private static final List<AppointmentStatus> ACTIVE_STATUSES =
+            List.of(AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED);
 
     private final AppointmentRepository appointmentRepository;
     private final PatientProfileRepository patientProfileRepository;
@@ -32,7 +45,6 @@ public class AppointmentService {
     private final DoctorScheduleExceptionRepository scheduleExceptionRepository;
     private final AppointmentStatusHistoryService appointmentStatusHistoryService;
     private final AppointmentMapper appointmentMapper;
-
 
     public AppointmentService(AppointmentRepository appointmentRepository,
                               PatientProfileRepository patientProfileRepository,
@@ -50,72 +62,72 @@ public class AppointmentService {
         this.appointmentMapper = appointmentMapper;
     }
 
-    // read QUERY
+    // ---------- queries ----------
 
-
-    public AppointmentResponseDto getById(Long id) {
-        Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Appointment not found: " + id));
-        return appointmentMapper.convertAppointmentToAppointmentResponseDto(appointment);
+    public AppointmentResponse getById(Long id) {
+        return appointmentMapper.toResponse(findAppointment(id));
     }
 
-    public List<AppointmentResponseDto> getByPatient(Long patientId) {
+    public List<AppointmentResponse> getByPatient(Long patientId) {
         return appointmentRepository.findByPatientId(patientId).stream()
-                .map(appointmentMapper::convertAppointmentToAppointmentResponseDto)
+                .map(appointmentMapper::toResponse)
                 .toList();
     }
 
-    public List<AppointmentResponseDto> getByDoctor(Long doctorId) {
+    public List<AppointmentResponse> getByDoctor(Long doctorId) {
         return appointmentRepository.findByDoctorId(doctorId).stream()
-                .map(appointmentMapper::convertAppointmentToAppointmentResponseDto)
+                .map(appointmentMapper::toResponse)
                 .toList();
     }
 
-    public List<AppointmentResponseDto> getByDoctorAndDate(Long doctorId, LocalDate date) {
+    public List<AppointmentResponse> getByDoctorAndDate(Long doctorId, LocalDate date) {
         LocalDateTime dayStart = date.atStartOfDay();
         LocalDateTime dayEnd = date.atTime(LocalTime.MAX);
         return appointmentRepository
                 .findByDoctorIdAndScheduledStartBetween(doctorId, dayStart, dayEnd).stream()
-                .map(appointmentMapper::convertAppointmentToAppointmentResponseDto)
+                .map(appointmentMapper::toResponse)
                 .toList();
     }
 
-    //CREATE AND VALIDATION
+    // ---------- booking ----------
 
-    @Transactional
-    public AppointmentResponseDto createAppointment(AppointmentRequestDto dto) {
+    public AppointmentResponse createAppointment(AppointmentRequest request) {
+        LocalDateTime start = request.getScheduledStart();
+        LocalDateTime end = request.getScheduledEnd();
 
-        LocalDateTime start = dto.getScheduledStart();
-        LocalDateTime end = dto.getScheduledEnd();
-
-        //start before end
         if (!start.isBefore(end)) {
-            throw new IllegalArgumentException("scheduledStart must be before scheduledEnd");
+            throw new InvalidAppointmentTimeException("Appointment start must be before its end");
         }
 
-        // exsit doctor and patient
-        PatientProfile patient = patientProfileRepository.findById(dto.getPatientId())
-                .orElseThrow(() -> new EntityNotFoundException("Patient not found: " + dto.getPatientId()));
-        DoctorProfile doctor = doctorProfileRepository.findById(dto.getDoctorId())
-                .orElseThrow(() -> new EntityNotFoundException("Doctor not found: " + dto.getDoctorId()));
+        PatientProfile patient = patientProfileRepository.findById(request.getPatientId())
+                .orElseThrow(() -> new PatientNotFoundException("Patient not found"));
+        DoctorProfile doctor = doctorProfileRepository.findById(request.getDoctorId())
+                .orElseThrow(() -> new DoctorNotFoundException("Doctor not found"));
 
-        // active doctor
         if (!doctor.isActive()) {
-            throw new IllegalStateException("Doctor is not active");
+            throw new DoctorNotActiveException("Doctor is not active");
         }
 
         Long doctorId = doctor.getId();
+        assertDoctorAvailable(doctorId, start, end);
+        assertNoOverlap(doctorId, start, end);
 
-        // unavailable
-        boolean insideUnavailable = scheduleExceptionRepository
-                .findByDoctorIdOrderByStartsAtAsc(doctorId).stream()
+        Appointment appointment = appointmentMapper.toEntity(request, patient, doctor);
+        appointment.setStatus(AppointmentStatus.SCHEDULED);
+
+        return appointmentMapper.toResponse(appointmentRepository.save(appointment));
+    }
+
+    private void assertDoctorAvailable(Long doctorId, LocalDateTime start, LocalDateTime end) {
+        var scheduleExceptions = scheduleExceptionRepository.findByDoctorIdOrderByStartsAtAsc(doctorId);
+
+        boolean insideUnavailable = scheduleExceptions.stream()
                 .filter(e -> e.getExceptionType() == ScheduleExceptionType.UNAVAILABLE)
                 .anyMatch(e -> e.getStartsAt().isBefore(end) && e.getEndsAt().isAfter(start));
         if (insideUnavailable) {
-            throw new IllegalStateException("Doctor is unavailable during this period");
+            throw new DoctorNotAvailableException("Doctor is unavailable during this period");
         }
 
-        //  AVAILABLE_OVERRIDE
         DayOfWeek day = start.getDayOfWeek();
         LocalTime startTime = start.toLocalTime();
         LocalTime endTime = end.toLocalTime();
@@ -126,105 +138,80 @@ public class AppointmentService {
                         && !startTime.isBefore(rule.getStartTime())
                         && !endTime.isAfter(rule.getEndTime()));
 
-        boolean withinOverride = scheduleExceptionRepository
-                .findByDoctorIdOrderByStartsAtAsc(doctorId).stream()
+        boolean withinOverride = scheduleExceptions.stream()
                 .filter(e -> e.getExceptionType() == ScheduleExceptionType.AVAILABLE_OVERRIDE)
                 .anyMatch(e -> !start.isBefore(e.getStartsAt()) && !end.isAfter(e.getEndsAt()));
 
         if (!withinRegularHours && !withinOverride) {
-            throw new IllegalStateException("Appointment is outside the doctor's availability");
+            throw new DoctorNotAvailableException("Appointment is outside the doctor's availability");
         }
-
-        // interference
-        List<AppointmentStatus> activeStatuses =
-                List.of(AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED);
-        List<Appointment> doctorAppointments =
-                appointmentRepository.findByDoctorIdAndStatusIn(doctorId, activeStatuses);
-        for (Appointment existing : doctorAppointments) {
-            boolean overlaps = start.isBefore(existing.getScheduledEnd())
-                    && existing.getScheduledStart().isBefore(end);
-            if (overlaps) {
-                throw new IllegalStateException("Doctor already has an overlapping appointment");
-            }
-        }
-
-        // create and save
-        Appointment appointment =
-                appointmentMapper.convertAppointmentRequestDtoToAppointment(dto, patient, doctor);
-        appointment.setStatus(AppointmentStatus.SCHEDULED);
-        Appointment saved = appointmentRepository.save(appointment);
-
-        return appointmentMapper.convertAppointmentToAppointmentResponseDto(saved);
     }
 
-    // LIFECYCLE
+    private void assertNoOverlap(Long doctorId, LocalDateTime start, LocalDateTime end) {
+        boolean overlaps = appointmentRepository.findByDoctorIdAndStatusIn(doctorId, ACTIVE_STATUSES).stream()
+                .anyMatch(existing -> start.isBefore(existing.getScheduledEnd())
+                        && existing.getScheduledStart().isBefore(end));
+        if (overlaps) {
+            throw new AppointmentOverlapException("Doctor already has an overlapping appointment");
+        }
+    }
 
-    @Transactional
-    public AppointmentResponseDto confirm(Long appointmentId, Long actorUserId) {
+    // ---------- lifecycle ----------
+
+    public AppointmentResponse confirm(Long appointmentId, Long actorUserId) {
         return changeStatus(appointmentId, AppointmentStatus.CONFIRMED, actorUserId, null);
     }
 
-    @Transactional
-    public AppointmentResponseDto cancel(Long appointmentId, Long actorUserId, String reason) {
+    public AppointmentResponse cancel(Long appointmentId, Long actorUserId, String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new CancellationReasonRequiredException("Cancellation reason is required");
+        }
         return changeStatus(appointmentId, AppointmentStatus.CANCELLED, actorUserId, reason);
     }
 
-    @Transactional
-    public AppointmentResponseDto complete(Long appointmentId, Long actorUserId) {
+    public AppointmentResponse complete(Long appointmentId, Long actorUserId) {
         return changeStatus(appointmentId, AppointmentStatus.COMPLETED, actorUserId, null);
     }
 
-    @Transactional
-    public AppointmentResponseDto noShow(Long appointmentId, Long actorUserId) {
+    public AppointmentResponse noShow(Long appointmentId, Long actorUserId) {
         return changeStatus(appointmentId, AppointmentStatus.NO_SHOW, actorUserId, null);
     }
 
-
-    private AppointmentResponseDto changeStatus(Long appointmentId,
-                                                AppointmentStatus newStatus,
-                                                Long actorUserId,
-                                                String reason) {
-
-        Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new EntityNotFoundException("Appointment not found: " + appointmentId));
-
+    private AppointmentResponse changeStatus(Long appointmentId,
+                                             AppointmentStatus newStatus,
+                                             Long actorUserId,
+                                             String reason) {
+        Appointment appointment = findAppointment(appointmentId);
         AppointmentStatus oldStatus = appointment.getStatus();
 
-        // transition
         if (!isValidTransition(oldStatus, newStatus)) {
-            throw new IllegalStateException(
+            throw new InvalidStatusTransitionException(
                     "Invalid status transition: " + oldStatus + " -> " + newStatus);
         }
 
-        // cancel and reason
         if (newStatus == AppointmentStatus.CANCELLED) {
-            if (reason == null || reason.isBlank()) {
-                throw new IllegalArgumentException("Cancellation reason is required");
-            }
             appointment.setCancellationReason(reason);
         }
-
         appointment.setStatus(newStatus);
         Appointment saved = appointmentRepository.save(appointment);
 
-
         appointmentStatusHistoryService.record(saved, oldStatus, newStatus, actorUserId, reason);
 
-        return appointmentMapper.convertAppointmentToAppointmentResponseDto(saved);
+        return appointmentMapper.toResponse(saved);
     }
 
-    // transaction
     private boolean isValidTransition(AppointmentStatus from, AppointmentStatus to) {
-        if (from == AppointmentStatus.SCHEDULED) {
-            return to == AppointmentStatus.CONFIRMED
-                    || to == AppointmentStatus.CANCELLED;
-        }
-        if (from == AppointmentStatus.CONFIRMED) {
-            return to == AppointmentStatus.COMPLETED
+        return switch (from) {
+            case SCHEDULED -> to == AppointmentStatus.CONFIRMED || to == AppointmentStatus.CANCELLED;
+            case CONFIRMED -> to == AppointmentStatus.COMPLETED
                     || to == AppointmentStatus.CANCELLED
                     || to == AppointmentStatus.NO_SHOW;
-        }
-        // COMPLETED / CANCELLED / NO_SHOW
-        return false;
+            case COMPLETED, CANCELLED, NO_SHOW -> false;
+        };
+    }
+
+    private Appointment findAppointment(Long id) {
+        return appointmentRepository.findById(id)
+                .orElseThrow(() -> new AppointmentNotFoundException("Appointment not found"));
     }
 }

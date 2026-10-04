@@ -16,10 +16,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findByDoctorIdAndScheduledStartBetween(
             Long doctorId, LocalDateTime start, LocalDateTime end);
 
-
     List<Appointment> findByDoctorIdAndStatusIn(
             Long doctorId, List<AppointmentStatus> statuses);
-
-    List<Appointment> findByDoctorIdAndScheduledStartLessThanAndScheduledEndGreaterThan(
-            Long doctorId, LocalDateTime end, LocalDateTime start);
 }

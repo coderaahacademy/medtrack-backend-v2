@@ -1,10 +1,10 @@
-package com.coderaah.medtrack.appointment.dto.responeDto;
+package com.coderaah.medtrack.appointment.dto;
 
 import com.coderaah.medtrack.appointment.domain.AppointmentStatus;
 
 import java.time.LocalDateTime;
 
-public class AppointmentStatusHistoryResponeDto {
+public class AppointmentStatusHistoryResponse {
 
     private Long id;
     private Long appointmentId;
@@ -13,7 +13,7 @@ public class AppointmentStatusHistoryResponeDto {
     private Long changedByUserId;
     private String reason;
     private LocalDateTime changedAt;
-    public AppointmentStatusHistoryResponeDto() {}
+    public AppointmentStatusHistoryResponse() {}
 
 
     public Long getId() {

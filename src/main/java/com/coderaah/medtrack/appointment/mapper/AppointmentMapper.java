@@ -1,51 +1,41 @@
 package com.coderaah.medtrack.appointment.mapper;
 
 import com.coderaah.medtrack.appointment.domain.Appointment;
-import com.coderaah.medtrack.appointment.dto.requestDto.AppointmentRequestDto;
-import com.coderaah.medtrack.appointment.dto.responeDto.AppointmentResponseDto;
+import com.coderaah.medtrack.appointment.dto.AppointmentRequest;
+import com.coderaah.medtrack.appointment.dto.AppointmentResponse;
 import com.coderaah.medtrack.doctor.domain.DoctorProfile;
 import com.coderaah.medtrack.patient.domain.PatientProfile;
 import org.springframework.stereotype.Component;
 
 @Component
 public class AppointmentMapper {
-    public AppointmentMapper() {
-    }
 
-    public Appointment convertAppointmentRequestDtoToAppointment(
-            AppointmentRequestDto appointmentRequestDto,
-            PatientProfile patient,
-            DoctorProfile doctor
-    ) {
+    public Appointment toEntity(AppointmentRequest request, PatientProfile patient, DoctorProfile doctor) {
         Appointment appointment = new Appointment();
         appointment.setPatient(patient);
         appointment.setDoctor(doctor);
-        appointment.setAppointmentType(appointmentRequestDto.getAppointmentType());
-        appointment.setScheduledStart(appointmentRequestDto.getScheduledStart());
-        appointment.setScheduledEnd(appointmentRequestDto.getScheduledEnd());
-        appointment.setLocation(appointmentRequestDto.getLocation());
-        appointment.setReason(appointmentRequestDto.getReason());
+        appointment.setAppointmentType(request.getAppointmentType());
+        appointment.setScheduledStart(request.getScheduledStart());
+        appointment.setScheduledEnd(request.getScheduledEnd());
+        appointment.setLocation(request.getLocation());
+        appointment.setReason(request.getReason());
         return appointment;
     }
 
-    public AppointmentResponseDto convertAppointmentToAppointmentResponseDto(Appointment appointment) {
-        AppointmentResponseDto appointmentResponseDto = new AppointmentResponseDto();
-        appointmentResponseDto.setId(appointment.getId());
-        appointmentResponseDto.setPatientId(appointment.getPatient().getId());
-        appointmentResponseDto.setDoctorId(appointment.getDoctor().getId());
-        appointmentResponseDto.setAppointmentType(appointment.getAppointmentType());
-        appointmentResponseDto.setScheduledStart(appointment.getScheduledStart());
-        appointmentResponseDto.setScheduledEnd(appointment.getScheduledEnd());
-        appointmentResponseDto.setLocation(appointment.getLocation());
-        appointmentResponseDto.setReason(appointment.getReason());
-        appointmentResponseDto.setStatus(appointment.getStatus());
-        appointmentResponseDto.setCancellationReason(appointment.getCancellationReason());
-        appointmentResponseDto.setCreatedAt(appointment.getCreatedAt());
-        appointmentResponseDto.setUpdatedAt(appointment.getUpdatedAt());
-        return appointmentResponseDto;
-
+    public AppointmentResponse toResponse(Appointment appointment) {
+        AppointmentResponse response = new AppointmentResponse();
+        response.setId(appointment.getId());
+        response.setPatientId(appointment.getPatient().getId());
+        response.setDoctorId(appointment.getDoctor().getId());
+        response.setAppointmentType(appointment.getAppointmentType());
+        response.setScheduledStart(appointment.getScheduledStart());
+        response.setScheduledEnd(appointment.getScheduledEnd());
+        response.setLocation(appointment.getLocation());
+        response.setReason(appointment.getReason());
+        response.setStatus(appointment.getStatus());
+        response.setCancellationReason(appointment.getCancellationReason());
+        response.setCreatedAt(appointment.getCreatedAt());
+        response.setUpdatedAt(appointment.getUpdatedAt());
+        return response;
     }
 }
-
-
-
