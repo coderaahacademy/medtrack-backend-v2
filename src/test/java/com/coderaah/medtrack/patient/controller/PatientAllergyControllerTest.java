@@ -136,6 +136,12 @@ public class PatientAllergyControllerTest {
         mockMvc.perform(get("/api/patients/999/allergies"))
                 .andExpect(status().isNotFound());
     }
+    @Test
+    void getAllergies_returnsBadRequest_whenStatusIsInvalid() throws Exception {
+
+        mockMvc.perform(get("/api/patients/1/allergies?status=INVALID_VALUE"))
+                .andExpect(status().isBadRequest());
+    }
 
     @Test
     void updateAllergy_returnsOk() throws Exception {

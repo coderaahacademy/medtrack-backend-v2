@@ -1,6 +1,5 @@
 package com.coderaah.medtrack.patient.controller;
 
-
 import com.coderaah.medtrack.patient.domain.PatientConditionStatus;
 import com.coderaah.medtrack.patient.dto.ConditionRequest;
 import com.coderaah.medtrack.patient.dto.ConditionResponse;
@@ -12,16 +11,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-@RestController
-@RequestMapping("api/patients/{patientId}/conditions")
 
+@RestController
+@RequestMapping("/api/patients/{patientId}/conditions")
 public class PatientConditionController {
+
     private final PatientConditionService patientConditionService;
 
-    public PatientConditionController(PatientConditionService patientConditionService){
-        this.patientConditionService=patientConditionService;
-
+    public PatientConditionController(PatientConditionService patientConditionService) {
+        this.patientConditionService = patientConditionService;
     }
+
     @PostMapping
     public ResponseEntity<ConditionResponse> createCondition(@PathVariable Long patientId,
                                                              @Valid @RequestBody ConditionRequest request) {
@@ -31,34 +31,24 @@ public class PatientConditionController {
 
     @GetMapping
     public ResponseEntity<List<ConditionResponse>> getConditions(@PathVariable Long patientId,
-                                                                 @RequestParam(required = false) String status) {
-        PatientConditionStatus statusFilter = parseStatus(status);
-        List<ConditionResponse> conditions = patientConditionService.getConditions(patientId, statusFilter);
+                                                                 @RequestParam(required = false) PatientConditionStatus status) {
+        List<ConditionResponse> conditions = patientConditionService.getConditions(patientId, status);
         return ResponseEntity.ok(conditions);
     }
 
     @PutMapping("/{conditionId}")
-    public ResponseEntity<ConditionResponse> updateCondition(@PathVariable Long patientId,@PathVariable Long conditionId,@Valid @RequestBody ConditionRequest request)
-    {
+    public ResponseEntity<ConditionResponse> updateCondition(@PathVariable Long patientId,
+                                                             @PathVariable Long conditionId,
+                                                             @Valid @RequestBody ConditionRequest request) {
         ConditionResponse updated = patientConditionService.updateCondition(patientId, conditionId, request);
         return ResponseEntity.ok(updated);
     }
 
     @PatchMapping("/{conditionId}/status")
-    public ResponseEntity<ConditionResponse> changeConditionStatus(@PathVariable Long patientId,@PathVariable Long conditionId,@Valid @RequestBody ConditionStatusUpdateRequest request)
-    {
+    public ResponseEntity<ConditionResponse> changeConditionStatus(@PathVariable Long patientId,
+                                                                   @PathVariable Long conditionId,
+                                                                   @Valid @RequestBody ConditionStatusUpdateRequest request) {
         ConditionResponse updated = patientConditionService.changeConditionStatus(patientId, conditionId, request.getStatus());
         return ResponseEntity.ok(updated);
-    }
-
-    private PatientConditionStatus parseStatus(String status) {
-        if (status == null) {
-            return null;
-        }
-        try {
-            return PatientConditionStatus.valueOf(status.toUpperCase());
-        } catch (IllegalArgumentException exception) {
-            throw new IllegalArgumentException("Invalid condition status: " + status);
-        }
     }
 }

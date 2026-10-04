@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(PatientAllergyController.class)
+@WebMvcTest(PatientConditionController.class)
 public class PatientConditionControllerTest {
     @Autowired
     private MockMvc mockMvc;
@@ -132,6 +132,12 @@ public class PatientConditionControllerTest {
 
         mockMvc.perform(get("/api/patients/999/conditions"))
                 .andExpect(status().isNotFound());
+    }
+    @Test
+    void getConditions_returnsBadRequest_whenStatusIsInvalid() throws Exception {
+
+        mockMvc.perform(get("/api/patients/1/conditions?status=INVALID_VALUE"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
