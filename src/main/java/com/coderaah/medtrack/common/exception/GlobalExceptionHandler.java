@@ -194,6 +194,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleActiveFamilyDoctorAlreadyExists(
             ActiveFamilyDoctorAlreadyExistsException exception) {
 
+
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(exception.getMessage());

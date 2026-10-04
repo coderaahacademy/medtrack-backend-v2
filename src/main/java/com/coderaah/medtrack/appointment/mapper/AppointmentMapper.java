@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class AppointmentMapper {
 
+
     public Appointment toEntity(AppointmentRequest request, PatientProfile patient, DoctorProfile doctor) {
         Appointment appointment = new Appointment();
         appointment.setPatient(patient);

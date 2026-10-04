@@ -48,6 +48,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AppointmentServiceTest {
 
+
     @Mock AppointmentRepository appointmentRepository;
     @Mock PatientProfileRepository patientProfileRepository;
     @Mock DoctorProfileRepository doctorProfileRepository;

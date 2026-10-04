@@ -35,6 +35,7 @@ import java.util.List;
 @Transactional
 public class AppointmentService {
 
+
     private static final List<AppointmentStatus> ACTIVE_STATUSES =
             List.of(AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED);
 

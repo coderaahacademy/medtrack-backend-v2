@@ -20,6 +20,7 @@ public class AppointmentStatusHistoryController {
         this.historyService = historyService;
     }
 
+
     @GetMapping("/{appointmentId}/history")
     public ResponseEntity<List<AppointmentStatusHistoryResponse>> getHistory(@PathVariable Long appointmentId) {
         return ResponseEntity.ok(historyService.getHistoryForAppointment(appointmentId));

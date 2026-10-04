@@ -6,6 +6,7 @@ import java.util.List;
 
 public interface AppointmentStatusHistoryRepository extends JpaRepository<AppointmentStatusHistory, Long> {
 
+
     List<AppointmentStatusHistory> findByAppointmentIdOrderByChangedAtAsc(Long appointmentId);
 }
 

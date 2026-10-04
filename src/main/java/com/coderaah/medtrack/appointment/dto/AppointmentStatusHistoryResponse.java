@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 
 public class AppointmentStatusHistoryResponse {
 
+
     private Long id;
     private Long appointmentId;
     private AppointmentStatus oldStatus;

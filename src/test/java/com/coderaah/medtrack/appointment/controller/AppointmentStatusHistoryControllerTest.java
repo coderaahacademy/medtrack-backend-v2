@@ -25,6 +25,7 @@ class AppointmentStatusHistoryControllerTest {
     @MockitoBean
     private AppointmentStatusHistoryService historyService;
 
+
     @Test
     void getHistory_returnsOk_withHistoryRecords() throws Exception {
         AppointmentStatusHistoryResponse record = new AppointmentStatusHistoryResponse();

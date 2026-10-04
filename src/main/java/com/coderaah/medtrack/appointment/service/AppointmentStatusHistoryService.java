@@ -18,6 +18,7 @@ import java.util.List;
 @Transactional
 public class AppointmentStatusHistoryService {
 
+
     private final AppointmentStatusHistoryRepository historyRepository;
     private final UserAccountRepository userAccountRepository;
     private final AppointmentStatusHistoryMapper historyMapper;

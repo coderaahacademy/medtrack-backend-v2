@@ -13,6 +13,7 @@ public class CancelAppointmentRequest {
         return reason;
     }
 
+
     public void setReason(String reason) {
         this.reason = reason;
     }

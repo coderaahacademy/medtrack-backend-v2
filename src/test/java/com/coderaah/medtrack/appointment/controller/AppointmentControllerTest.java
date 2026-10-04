@@ -89,6 +89,7 @@ class AppointmentControllerTest {
                 .andExpect(jsonPath("$.status").value("SCHEDULED"));
     }
 
+
     @Test
     void create_returnsBadRequest_whenReasonExceeds255Characters() throws Exception {
         AppointmentRequest request = validRequest();

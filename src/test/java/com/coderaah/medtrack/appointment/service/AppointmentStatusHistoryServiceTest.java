@@ -62,6 +62,7 @@ class AppointmentStatusHistoryServiceTest {
         assertThat(saved.getReason()).isEqualTo("No longer needed");
     }
 
+
     @Test
     void record_allowsNullReason() {
         when(userAccountRepository.findById(9L)).thenReturn(Optional.of(new UserAccount()));

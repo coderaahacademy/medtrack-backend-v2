@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class AppointmentStatusHistoryMapper {
 
+
     public AppointmentStatusHistoryResponse toResponse(AppointmentStatusHistory history) {
         AppointmentStatusHistoryResponse response = new AppointmentStatusHistoryResponse();
         response.setId(history.getId());

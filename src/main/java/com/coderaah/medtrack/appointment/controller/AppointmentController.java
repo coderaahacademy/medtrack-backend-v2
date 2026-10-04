@@ -30,6 +30,7 @@ public class AppointmentController {
         this.appointmentService = appointmentService;
     }
 
+
     @PostMapping("/appointments")
     public ResponseEntity<AppointmentResponse> create(@Valid @RequestBody AppointmentRequest request) {
         return ResponseEntity
