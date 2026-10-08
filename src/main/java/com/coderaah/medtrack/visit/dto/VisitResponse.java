@@ -1,7 +1,6 @@
 package com.coderaah.medtrack.visit.dto;
 
 import com.coderaah.medtrack.visit.domain.VisitStatus;
-
 import java.time.LocalDateTime;
 
 public class VisitResponse {
@@ -10,111 +9,48 @@ public class VisitResponse {
     private Long patientId;
     private Long doctorId;
     private Long appointmentId;
-    private LocalDateTime startedAt;
-    private LocalDateTime endedAt;
+    private VisitStatus status;
     private String symptoms;
     private String diagnosis;
     private String clinicalNotes;
-    private VisitStatus status;
+    private LocalDateTime startedAt;
+    private LocalDateTime endedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public VisitResponse() {
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public Long getId() {
-        return id;
-    }
+    public Long getPatientId() { return patientId; }
+    public void setPatientId(Long patientId) { this.patientId = patientId; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public Long getDoctorId() { return doctorId; }
+    public void setDoctorId(Long doctorId) { this.doctorId = doctorId; }
 
-    public Long getPatientId() {
-        return patientId;
-    }
+    public Long getAppointmentId() { return appointmentId; }
+    public void setAppointmentId(Long appointmentId) { this.appointmentId = appointmentId; }
 
-    public void setPatientId(Long patientId) {
-        this.patientId = patientId;
-    }
+    public VisitStatus getStatus() { return status; }
+    public void setStatus(VisitStatus status) { this.status = status; }
 
-    public Long getDoctorId() {
-        return doctorId;
-    }
+    public String getSymptoms() { return symptoms; }
+    public void setSymptoms(String symptoms) { this.symptoms = symptoms; }
 
-    public void setDoctorId(Long doctorId) {
-        this.doctorId = doctorId;
-    }
+    public String getDiagnosis() { return diagnosis; }
+    public void setDiagnosis(String diagnosis) { this.diagnosis = diagnosis; }
 
-    public Long getAppointmentId() {
-        return appointmentId;
-    }
+    public String getClinicalNotes() { return clinicalNotes; }
+    public void setClinicalNotes(String clinicalNotes) { this.clinicalNotes = clinicalNotes; }
 
-    public void setAppointmentId(Long appointmentId) {
-        this.appointmentId = appointmentId;
-    }
+    public LocalDateTime getStartedAt() { return startedAt; }
+    public void setStartedAt(LocalDateTime startedAt) { this.startedAt = startedAt; }
 
-    public LocalDateTime getStartedAt() {
-        return startedAt;
-    }
+    public LocalDateTime getEndedAt() { return endedAt; }
+    public void setEndedAt(LocalDateTime endedAt) { this.endedAt = endedAt; }
 
-    public void setStartedAt(LocalDateTime startedAt) {
-        this.startedAt = startedAt;
-    }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public LocalDateTime getEndedAt() {
-        return endedAt;
-    }
-
-    public void setEndedAt(LocalDateTime endedAt) {
-        this.endedAt = endedAt;
-    }
-
-    public String getSymptoms() {
-        return symptoms;
-    }
-
-    public void setSymptoms(String symptoms) {
-        this.symptoms = symptoms;
-    }
-
-    public String getDiagnosis() {
-        return diagnosis;
-    }
-
-    public void setDiagnosis(String diagnosis) {
-        this.diagnosis = diagnosis;
-    }
-
-    public String getClinicalNotes() {
-        return clinicalNotes;
-    }
-
-    public void setClinicalNotes(String clinicalNotes) {
-        this.clinicalNotes = clinicalNotes;
-    }
-
-    public VisitStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(VisitStatus status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }
