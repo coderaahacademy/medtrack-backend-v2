@@ -1,5 +1,12 @@
 package com.coderaah.medtrack.common.exception;
 
+import com.coderaah.medtrack.appointment.exception.AppointmentNotFoundException;
+import com.coderaah.medtrack.appointment.exception.AppointmentOverlapException;
+import com.coderaah.medtrack.appointment.exception.CancellationReasonRequiredException;
+import com.coderaah.medtrack.appointment.exception.DoctorNotActiveException;
+import com.coderaah.medtrack.appointment.exception.DoctorNotAvailableException;
+import com.coderaah.medtrack.appointment.exception.InvalidAppointmentTimeException;
+import com.coderaah.medtrack.appointment.exception.InvalidStatusTransitionException;
 import com.coderaah.medtrack.doctor.exception.ActiveFamilyDoctorAlreadyExistsException;
 import com.coderaah.medtrack.doctor.exception.AvailabilityRuleNotFoundException;
 import com.coderaah.medtrack.doctor.exception.CannotCancelPastScheduleException;
@@ -17,6 +24,7 @@ import com.coderaah.medtrack.doctor.exception.PatientDoctorRelationshipNotFoundE
 import com.coderaah.medtrack.doctor.exception.RelationshipAlreadyEndedException;
 import com.coderaah.medtrack.doctor.exception.ScheduleExceptionNotFoundException;
 import com.coderaah.medtrack.doctor.exception.SpecialtyNotFoundException;
+import com.coderaah.medtrack.identity.exception.UserAccountNotFoundException;
 import com.coderaah.medtrack.medication.exception.MedicationNotFoundException;
 import com.coderaah.medtrack.patient.exception.AllergyNotFoundException;
 import com.coderaah.medtrack.patient.exception.ConditionNotFoundException;
@@ -226,5 +234,53 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body("Invalid value for parameter '" + exception.getName() + "': " + exception.getValue());
+    }
+
+    @ExceptionHandler(AppointmentNotFoundException.class)
+    public ResponseEntity<String> handleAppointmentNotFound(
+            AppointmentNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(UserAccountNotFoundException.class)
+    public ResponseEntity<String> handleUserAccountNotFound(
+            UserAccountNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(InvalidAppointmentTimeException.class)
+    public ResponseEntity<String> handleInvalidAppointmentTime(
+            InvalidAppointmentTimeException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(CancellationReasonRequiredException.class)
+    public ResponseEntity<String> handleCancellationReasonRequired(
+            CancellationReasonRequiredException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(DoctorNotActiveException.class)
+    public ResponseEntity<String> handleDoctorNotActive(
+            DoctorNotActiveException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(DoctorNotAvailableException.class)
+    public ResponseEntity<String> handleDoctorNotAvailable(
+            DoctorNotAvailableException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(AppointmentOverlapException.class)
+    public ResponseEntity<String> handleAppointmentOverlap(
+            AppointmentOverlapException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(InvalidStatusTransitionException.class)
+    public ResponseEntity<String> handleInvalidStatusTransition(
+            InvalidStatusTransitionException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
     }
 }
