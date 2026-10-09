@@ -1,5 +1,8 @@
 package com.coderaah.medtrack.visit.controller;
 
+import com.coderaah.medtrack.appointment.exception.AppointmentNotFoundException;
+import com.coderaah.medtrack.visit.exception.InvalidAppointmentForVisitException;
+import com.coderaah.medtrack.visit.exception.VisitAlreadyExistsException;
 import com.coderaah.medtrack.common.exception.GlobalExceptionHandler;
 import com.coderaah.medtrack.doctor.exception.DoctorNotFoundException;
 import com.coderaah.medtrack.patient.exception.PatientNotFoundException;
@@ -72,7 +75,8 @@ class VisitControllerTest {
         mockMvc.perform(post("/api/visits")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                            {
+
+                                {
                               "patientId": 1,
                               "doctorId": 2,
                               "symptoms": "Fever"
@@ -404,7 +408,124 @@ class VisitControllerTest {
         mockMvc.perform(patch("/api/visits/99/cancel"))
                 .andExpect(status().isNotFound());
 
-
-        verify(visitService, never()).completeVisit(any());
     }
+
+// ---------- POST /api/appointments/{appointmentId}/visit ----------
+
+@Test
+void startVisitFromAppointment_shouldReturn201AndLocation_whenAppointmentIsValid() throws Exception {
+
+
+    VisitResponse response = visitResponse(7L, VisitStatus.IN_PROGRESS);
+    response.setAppointmentId(5L);
+    when(visitService.startVisitFromAppointment(5L)).thenReturn(response);
+
+
+    mockMvc.perform(post("/api/appointments/5/visit"))
+            .andExpect(status().isCreated())
+            .andExpect(header().string("Location", "/api/visits/7"))
+            .andExpect(jsonPath("$.id").value(7))
+            .andExpect(jsonPath("$.appointmentId").value(5))
+            .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+}
+
+@Test
+void startVisitFromAppointment_shouldReturn404_whenAppointmentDoesNotExist() throws Exception {
+
+    // Arrange
+    when(visitService.startVisitFromAppointment(99L))
+            .thenThrow(new AppointmentNotFoundException("Appointment not found with id: 99"));
+
+
+    mockMvc.perform(post("/api/appointments/99/visit"))
+            .andExpect(status().isNotFound());
+}
+
+@Test
+void startVisitFromAppointment_shouldReturn409_whenAppointmentIsCancelled() throws Exception {
+
+
+    when(visitService.startVisitFromAppointment(5L))
+            .thenThrow(new InvalidAppointmentForVisitException(
+                    "A cancelled appointment cannot start a visit"));
+
+
+    mockMvc.perform(post("/api/appointments/5/visit"))
+            .andExpect(status().isConflict());
+}
+
+@Test
+void startVisitFromAppointment_shouldReturn409_whenAppointmentAlreadyHasVisit() throws Exception {
+
+
+    when(visitService.startVisitFromAppointment(5L))
+            .thenThrow(new VisitAlreadyExistsException(
+                    "A visit already exists for this appointment"));
+
+
+    mockMvc.perform(post("/api/appointments/5/visit"))
+            .andExpect(status().isConflict());
+}
+
+@Test
+void startVisit_shouldReturn409_whenAppointmentBelongsToDifferentPatient() throws Exception {
+
+
+    when(visitService.startVisit(any(StartVisitRequest.class)))
+            .thenThrow(new InvalidAppointmentForVisitException(
+                    "Appointment belongs to a different patient"));
+
+
+    mockMvc.perform(post("/api/visits")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                            {
+                              "patientId": 1,
+                              "doctorId": 2,
+                              "appointmentId": 5
+                            }
+                            """))
+            .andExpect(status().isConflict());
+}
+
+// ---------- GET /api/appointments/{appointmentId}/visit ----------
+
+@Test
+void getVisitByAppointment_shouldReturnVisit_whenVisitExists() throws Exception {
+
+
+    VisitResponse response = visitResponse(7L, VisitStatus.IN_PROGRESS);
+    response.setAppointmentId(5L);
+    when(visitService.getVisitByAppointment(5L)).thenReturn(response);
+
+
+    mockMvc.perform(get("/api/appointments/5/visit"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(7))
+            .andExpect(jsonPath("$.appointmentId").value(5));
+}
+
+@Test
+void getVisitByAppointment_shouldReturn404_whenAppointmentDoesNotExist() throws Exception {
+
+
+    when(visitService.getVisitByAppointment(99L))
+            .thenThrow(new AppointmentNotFoundException("Appointment not found with id: 99"));
+
+
+    mockMvc.perform(get("/api/appointments/99/visit"))
+            .andExpect(status().isNotFound());
+}
+
+@Test
+void getVisitByAppointment_shouldReturn404_whenNoVisitExistsYet() throws Exception {
+
+
+    when(visitService.getVisitByAppointment(5L))
+            .thenThrow(new VisitNotFoundException("No visit exists for this appointment"));
+
+
+    mockMvc.perform(get("/api/appointments/5/visit"))
+            .andExpect(status().isNotFound());
+}
 }

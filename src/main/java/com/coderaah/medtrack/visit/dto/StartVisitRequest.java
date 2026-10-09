@@ -11,6 +11,8 @@ public class StartVisitRequest {
     @NotNull
     private Long doctorId;
 
+    private Long appointmentId;
+
     @Size(max = 5000)
     private String symptoms;
 
@@ -19,6 +21,9 @@ public class StartVisitRequest {
 
     public Long getDoctorId() { return doctorId; }
     public void setDoctorId(Long doctorId) { this.doctorId = doctorId; }
+
+    public Long getAppointmentId() { return appointmentId; }
+    public void setAppointmentId(Long appointmentId) { this.appointmentId = appointmentId; }
 
     public String getSymptoms() { return symptoms; }
     public void setSymptoms(String symptoms) { this.symptoms = symptoms; }

@@ -1,6 +1,7 @@
 package com.coderaah.medtrack.visit.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -12,6 +13,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.coderaah.medtrack.appointment.domain.Appointment;
+import com.coderaah.medtrack.appointment.domain.AppointmentStatus;
+import com.coderaah.medtrack.appointment.exception.AppointmentNotFoundException;
+import com.coderaah.medtrack.appointment.repository.AppointmentRepository;
 import com.coderaah.medtrack.doctor.domain.DoctorProfile;
 import com.coderaah.medtrack.doctor.exception.DoctorNotFoundException;
 import com.coderaah.medtrack.doctor.repository.DoctorProfileRepository;
@@ -23,7 +28,9 @@ import com.coderaah.medtrack.visit.domain.VisitStatus;
 import com.coderaah.medtrack.visit.dto.StartVisitRequest;
 import com.coderaah.medtrack.visit.dto.UpdateClinicalNotesRequest;
 import com.coderaah.medtrack.visit.dto.VisitResponse;
+import com.coderaah.medtrack.visit.exception.InvalidAppointmentForVisitException;
 import com.coderaah.medtrack.visit.exception.InvalidVisitStatusException;
+import com.coderaah.medtrack.visit.exception.VisitAlreadyExistsException;
 import com.coderaah.medtrack.visit.exception.VisitNotFoundException;
 import com.coderaah.medtrack.visit.repository.VisitRepository;
 import java.time.LocalDateTime;
@@ -38,6 +45,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @ExtendWith(MockitoExtension.class)
 class VisitServiceTest {
@@ -50,6 +58,9 @@ class VisitServiceTest {
 
     @Mock
     private DoctorProfileRepository doctorProfileRepository;
+
+    @Mock
+    private AppointmentRepository appointmentRepository;
 
     @InjectMocks
     private VisitService visitService;
@@ -71,6 +82,30 @@ class VisitServiceTest {
         return visit;
     }
 
+    private Appointment appointment(AppointmentStatus status, PatientProfile p, DoctorProfile d) {
+        Appointment appointment = mock(Appointment.class);
+        lenient().when(appointment.getId()).thenReturn(5L);
+        lenient().when(appointment.getStatus()).thenReturn(status);
+        lenient().when(appointment.getPatient()).thenReturn(p);
+        lenient().when(appointment.getDoctor()).thenReturn(d);
+        return appointment;
+    }
+
+
+    private void stubAppointment(AppointmentStatus status, PatientProfile p, DoctorProfile d) {
+        Appointment appt = appointment(status, p, d);
+        when(appointmentRepository.findById(5L)).thenReturn(Optional.of(appt));
+    }
+
+    private StartVisitRequest startRequest(Long appointmentId) {
+        StartVisitRequest request = new StartVisitRequest();
+        request.setPatientId(1L);
+        request.setDoctorId(2L);
+        request.setAppointmentId(appointmentId);
+        request.setSymptoms("Headache");
+        return request;
+    }
+
     private UpdateClinicalNotesRequest notesRequest() {
         UpdateClinicalNotesRequest request = new UpdateClinicalNotesRequest();
         request.setSymptoms("Fever");
@@ -83,19 +118,14 @@ class VisitServiceTest {
 
     @Test
     void startVisit_validPatientAndDoctor_createsInProgressVisit() {
-        StartVisitRequest request = new StartVisitRequest();
-        request.setPatientId(1L);
-        request.setDoctorId(2L);
-        request.setSymptoms("Headache");
-
         when(patientProfileRepository.findById(1L)).thenReturn(Optional.of(patient));
         when(doctorProfileRepository.findById(2L)).thenReturn(Optional.of(doctor));
-        when(visitRepository.save(any(Visit.class))).then(returnsFirstArg());
+        when(visitRepository.saveAndFlush(any(Visit.class))).then(returnsFirstArg());
 
-        VisitResponse response = visitService.startVisit(request);
+        VisitResponse response = visitService.startVisit(startRequest(null));
 
         ArgumentCaptor<Visit> captor = ArgumentCaptor.forClass(Visit.class);
-        verify(visitRepository).save(captor.capture());
+        verify(visitRepository).saveAndFlush(captor.capture());
         assertEquals(VisitStatus.IN_PROGRESS, captor.getValue().getStatus());
         assertNotNull(captor.getValue().getStartedAt());
 
@@ -109,27 +139,177 @@ class VisitServiceTest {
 
     @Test
     void startVisit_patientNotFound_throwsAndSavesNothing() {
-        StartVisitRequest request = new StartVisitRequest();
-        request.setPatientId(1L);
-        request.setDoctorId(2L);
-
         when(patientProfileRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(PatientNotFoundException.class, () -> visitService.startVisit(request));
-        verify(visitRepository, never()).save(any());
+        assertThrows(PatientNotFoundException.class, () -> visitService.startVisit(startRequest(null)));
+        verify(visitRepository, never()).saveAndFlush(any());
     }
 
     @Test
     void startVisit_doctorNotFound_throwsAndSavesNothing() {
-        StartVisitRequest request = new StartVisitRequest();
-        request.setPatientId(1L);
-        request.setDoctorId(2L);
-
         when(patientProfileRepository.findById(1L)).thenReturn(Optional.of(patient));
         when(doctorProfileRepository.findById(2L)).thenReturn(Optional.empty());
 
-        assertThrows(DoctorNotFoundException.class, () -> visitService.startVisit(request));
-        verify(visitRepository, never()).save(any());
+        assertThrows(DoctorNotFoundException.class, () -> visitService.startVisit(startRequest(null)));
+        verify(visitRepository, never()).saveAndFlush(any());
+    }
+
+    // ---------- startVisit mit Appointment ----------
+
+    @Test
+    void startVisit_withMatchingAppointment_linksAppointment() {
+        when(patientProfileRepository.findById(1L)).thenReturn(Optional.of(patient));
+        when(doctorProfileRepository.findById(2L)).thenReturn(Optional.of(doctor));
+        stubAppointment(AppointmentStatus.CONFIRMED, patient, doctor);
+        when(visitRepository.existsByAppointment_Id(5L)).thenReturn(false);
+        when(visitRepository.saveAndFlush(any(Visit.class))).then(returnsFirstArg());
+
+        VisitResponse response = visitService.startVisit(startRequest(5L));
+
+        assertEquals(5L, response.getAppointmentId());
+        assertEquals(VisitStatus.IN_PROGRESS, response.getStatus());
+    }
+
+    @Test
+    void startVisit_appointmentNotFound_throws() {
+        when(patientProfileRepository.findById(1L)).thenReturn(Optional.of(patient));
+        when(doctorProfileRepository.findById(2L)).thenReturn(Optional.of(doctor));
+        when(appointmentRepository.findById(5L)).thenReturn(Optional.empty());
+
+        assertThrows(AppointmentNotFoundException.class, () -> visitService.startVisit(startRequest(5L)));
+        verify(visitRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void startVisit_appointmentOfDifferentPatient_isRejected() {
+        PatientProfile otherPatient = mock(PatientProfile.class);
+        lenient().when(otherPatient.getId()).thenReturn(3L);
+
+        when(patientProfileRepository.findById(1L)).thenReturn(Optional.of(patient));
+        when(doctorProfileRepository.findById(2L)).thenReturn(Optional.of(doctor));
+        stubAppointment(AppointmentStatus.SCHEDULED, otherPatient, doctor);
+
+        assertThrows(InvalidAppointmentForVisitException.class, () -> visitService.startVisit(startRequest(5L)));
+        verify(visitRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void startVisit_appointmentOfDifferentDoctor_isRejected() {
+        DoctorProfile otherDoctor = mock(DoctorProfile.class);
+        lenient().when(otherDoctor.getId()).thenReturn(4L);
+
+        when(patientProfileRepository.findById(1L)).thenReturn(Optional.of(patient));
+        when(doctorProfileRepository.findById(2L)).thenReturn(Optional.of(doctor));
+        stubAppointment(AppointmentStatus.SCHEDULED, patient, otherDoctor);
+
+        assertThrows(InvalidAppointmentForVisitException.class, () -> visitService.startVisit(startRequest(5L)));
+        verify(visitRepository, never()).saveAndFlush(any());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = AppointmentStatus.class, names = {"CANCELLED", "NO_SHOW"})
+    void startVisit_cancelledOrNoShowAppointment_isRejected(AppointmentStatus status) {
+        when(patientProfileRepository.findById(1L)).thenReturn(Optional.of(patient));
+        when(doctorProfileRepository.findById(2L)).thenReturn(Optional.of(doctor));
+        stubAppointment(status, patient, doctor);
+
+        assertThrows(InvalidAppointmentForVisitException.class, () -> visitService.startVisit(startRequest(5L)));
+        verify(visitRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void startVisit_appointmentAlreadyHasVisit_isRejected() {
+        when(patientProfileRepository.findById(1L)).thenReturn(Optional.of(patient));
+        when(doctorProfileRepository.findById(2L)).thenReturn(Optional.of(doctor));
+        stubAppointment(AppointmentStatus.CONFIRMED, patient, doctor);
+        when(visitRepository.existsByAppointment_Id(5L)).thenReturn(true);
+
+        assertThrows(VisitAlreadyExistsException.class, () -> visitService.startVisit(startRequest(5L)));
+        verify(visitRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void startVisit_concurrentDuplicate_isTranslatedToVisitAlreadyExists() {
+        when(patientProfileRepository.findById(1L)).thenReturn(Optional.of(patient));
+        when(doctorProfileRepository.findById(2L)).thenReturn(Optional.of(doctor));
+        stubAppointment(AppointmentStatus.CONFIRMED, patient, doctor);
+        when(visitRepository.existsByAppointment_Id(5L)).thenReturn(false);
+        when(visitRepository.saveAndFlush(any(Visit.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate appointment_id"));
+
+        assertThrows(VisitAlreadyExistsException.class, () -> visitService.startVisit(startRequest(5L)));
+    }
+
+    // ---------- startVisitFromAppointment ----------
+
+    @Test
+    void startVisitFromAppointment_validAppointment_usesPatientAndDoctorOfAppointment() {
+        stubAppointment(AppointmentStatus.SCHEDULED, patient, doctor);
+        when(visitRepository.existsByAppointment_Id(5L)).thenReturn(false);
+        when(visitRepository.saveAndFlush(any(Visit.class))).then(returnsFirstArg());
+
+        VisitResponse response = visitService.startVisitFromAppointment(5L);
+
+        assertEquals(VisitStatus.IN_PROGRESS, response.getStatus());
+        assertEquals(1L, response.getPatientId());
+        assertEquals(2L, response.getDoctorId());
+        assertEquals(5L, response.getAppointmentId());
+    }
+
+    @Test
+    void startVisitFromAppointment_unknownAppointment_throws() {
+        when(appointmentRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(AppointmentNotFoundException.class, () -> visitService.startVisitFromAppointment(99L));
+        verify(visitRepository, never()).saveAndFlush(any());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = AppointmentStatus.class, names = {"CANCELLED", "NO_SHOW"})
+    void startVisitFromAppointment_cancelledOrNoShow_isRejected(AppointmentStatus status) {
+        stubAppointment(status, patient, doctor);
+
+        assertThrows(InvalidAppointmentForVisitException.class, () -> visitService.startVisitFromAppointment(5L));
+        verify(visitRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void startVisitFromAppointment_alreadyHasVisit_isRejected() {
+        stubAppointment(AppointmentStatus.CONFIRMED, patient, doctor);
+        when(visitRepository.existsByAppointment_Id(5L)).thenReturn(true);
+
+        assertThrows(VisitAlreadyExistsException.class, () -> visitService.startVisitFromAppointment(5L));
+        verify(visitRepository, never()).saveAndFlush(any());
+    }
+
+    // ---------- getVisitByAppointment ----------
+
+    @Test
+    void getVisitByAppointment_existing_returnsVisit() {
+        Visit visit = visitWithStatus(VisitStatus.IN_PROGRESS);
+        visit.setAppointment(appointment(AppointmentStatus.CONFIRMED, patient, doctor));
+        when(appointmentRepository.existsById(5L)).thenReturn(true);
+        when(visitRepository.findByAppointment_Id(5L)).thenReturn(Optional.of(visit));
+
+        VisitResponse response = visitService.getVisitByAppointment(5L);
+
+        assertEquals(10L, response.getId());
+        assertEquals(5L, response.getAppointmentId());
+    }
+
+    @Test
+    void getVisitByAppointment_unknownAppointment_throwsAppointmentNotFound() {
+        when(appointmentRepository.existsById(99L)).thenReturn(false);
+
+        assertThrows(AppointmentNotFoundException.class, () -> visitService.getVisitByAppointment(99L));
+    }
+
+    @Test
+    void getVisitByAppointment_noVisitYet_throwsVisitNotFound() {
+        when(appointmentRepository.existsById(5L)).thenReturn(true);
+        when(visitRepository.findByAppointment_Id(5L)).thenReturn(Optional.empty());
+
+        assertThrows(VisitNotFoundException.class, () -> visitService.getVisitByAppointment(5L));
     }
 
     // ---------- read ----------
@@ -233,7 +413,7 @@ class VisitServiceTest {
 
         assertEquals(VisitStatus.COMPLETED, response.getStatus());
         assertNotNull(response.getEndedAt());
-        assertEquals(false, response.getEndedAt().isBefore(response.getStartedAt()));
+        assertFalse(response.getEndedAt().isBefore(response.getStartedAt()));
     }
 
     @ParameterizedTest

@@ -1,5 +1,6 @@
 package com.coderaah.medtrack.visit.exception;
 
+import com.coderaah.medtrack.appointment.exception.AppointmentNotFoundException;
 import com.coderaah.medtrack.visit.controller.VisitController;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -15,7 +16,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class VisitExceptionHandler {
 
-    @ExceptionHandler(VisitNotFoundException.class)
+    @ExceptionHandler({VisitNotFoundException.class, AppointmentNotFoundException.class})
     public ResponseEntity<Map<String, Object>> handleNotFound(RuntimeException ex) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
     }

@@ -26,6 +26,12 @@ public class VisitController {
         return ResponseEntity.created(URI.create("/api/visits/" + created.getId())).body(created);
     }
 
+    @PostMapping("/appointments/{appointmentId}/visit")
+    public ResponseEntity<VisitResponse> startVisitFromAppointment(@PathVariable Long appointmentId) {
+        VisitResponse created = visitService.startVisitFromAppointment(appointmentId);
+        return ResponseEntity.created(URI.create("/api/visits/" + created.getId())).body(created);
+    }
+
     @GetMapping("/visits/{id}")
     public ResponseEntity<VisitResponse> getVisitById(@PathVariable Long id) {
         return ResponseEntity.ok(visitService.getVisitById(id));
@@ -39,6 +45,11 @@ public class VisitController {
     @GetMapping("/doctors/{doctorId}/visits")
     public ResponseEntity<List<VisitResponse>> getVisitsByDoctor(@PathVariable Long doctorId) {
         return ResponseEntity.ok(visitService.getVisitsByDoctor(doctorId));
+    }
+
+    @GetMapping("/appointments/{appointmentId}/visit")
+    public ResponseEntity<VisitResponse> getVisitByAppointment(@PathVariable Long appointmentId) {
+        return ResponseEntity.ok(visitService.getVisitByAppointment(appointmentId));
     }
 
     @PutMapping("/visits/{id}/clinical-notes")
