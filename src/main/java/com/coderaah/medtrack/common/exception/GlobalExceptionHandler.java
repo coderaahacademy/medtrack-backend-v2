@@ -1,5 +1,9 @@
 package com.coderaah.medtrack.common.exception;
 
+import com.coderaah.medtrack.visit.exception.InvalidAppointmentForVisitException;
+import com.coderaah.medtrack.visit.exception.InvalidVisitStatusException;
+import com.coderaah.medtrack.visit.exception.VisitAlreadyExistsException;
+import com.coderaah.medtrack.visit.exception.VisitNotFoundException;
 import com.coderaah.medtrack.appointment.exception.AppointmentNotFoundException;
 import com.coderaah.medtrack.appointment.exception.AppointmentOverlapException;
 import com.coderaah.medtrack.appointment.exception.CancellationReasonRequiredException;
@@ -281,6 +285,30 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidStatusTransitionException.class)
     public ResponseEntity<String> handleInvalidStatusTransition(
             InvalidStatusTransitionException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(VisitNotFoundException.class)
+    public ResponseEntity<String> handleVisitNotFound(
+            VisitNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(InvalidVisitStatusException.class)
+    public ResponseEntity<String> handleInvalidVisitStatus(
+            InvalidVisitStatusException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(VisitAlreadyExistsException.class)
+    public ResponseEntity<String> handleVisitAlreadyExists(
+            VisitAlreadyExistsException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(InvalidAppointmentForVisitException.class)
+    public ResponseEntity<String> handleInvalidAppointmentForVisit(
+            InvalidAppointmentForVisitException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
     }
 }
