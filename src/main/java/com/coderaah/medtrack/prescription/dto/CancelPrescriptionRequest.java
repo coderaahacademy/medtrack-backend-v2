@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 public class CancelPrescriptionRequest {
 
     @NotBlank
-    @Size(max = 1000)
+    @Size(max = 255)
     private String cancellationReason;
 
     public String getCancellationReason() {
