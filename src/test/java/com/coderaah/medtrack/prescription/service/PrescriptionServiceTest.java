@@ -663,5 +663,23 @@ class PrescriptionServiceTest {
         verify(historyRepository, never()).save(any());
     }
 
+    @Test
+    void cancel_rejectsExpiredPrescription() {
+        Prescription prescription = mock(Prescription.class);
+
+        when(prescriptionRepository.findById(1L))
+                .thenReturn(Optional.of(prescription));
+        when(prescription.getStatus()).thenReturn(PrescriptionStatus.ISSUED);
+        when(prescription.getExpiresAt()).thenReturn(LocalDate.now().minusDays(1));
+
+        CancelPrescriptionRequest request = new CancelPrescriptionRequest();
+        request.setCancellationReason("Try cancel expired");
+
+        assertThatThrownBy(() -> prescriptionService.cancel(1L, request, 9L))
+                .isInstanceOf(InvalidPrescriptionOperationException.class);
+
+        verify(prescriptionRepository, never()).save(any());
+        verify(historyRepository, never()).save(any());
+    }
 
 }

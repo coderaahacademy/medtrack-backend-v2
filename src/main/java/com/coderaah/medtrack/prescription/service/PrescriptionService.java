@@ -179,6 +179,11 @@ public class PrescriptionService {
         Prescription prescription = findPrescription(prescriptionId);
         PrescriptionStatus oldStatus = prescription.getStatus();
 
+        if (isExpired(prescription)) {
+            throw new InvalidPrescriptionOperationException(
+                    "An expired prescription cannot be cancelled.");
+        }
+
         if (oldStatus == PrescriptionStatus.FULFILLED) {
             throw new InvalidPrescriptionOperationException(
                     "A fulfilled prescription cannot be cancelled.");
