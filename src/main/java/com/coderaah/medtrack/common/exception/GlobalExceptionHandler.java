@@ -34,6 +34,9 @@ import com.coderaah.medtrack.patient.exception.AllergyNotFoundException;
 import com.coderaah.medtrack.patient.exception.ConditionNotFoundException;
 import com.coderaah.medtrack.patient.exception.DuplicateMedicalRecordNumberException;
 import com.coderaah.medtrack.patient.exception.PatientNotFoundException;
+import com.coderaah.medtrack.prescription.exception.PrescriptionNotFoundException;
+import com.coderaah.medtrack.prescription.exception.PrescriptionItemNotFoundException;
+import com.coderaah.medtrack.prescription.exception.InvalidPrescriptionOperationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -309,6 +312,24 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidAppointmentForVisitException.class)
     public ResponseEntity<String> handleInvalidAppointmentForVisit(
             InvalidAppointmentForVisitException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(PrescriptionNotFoundException.class)
+    public ResponseEntity<String> handlePrescriptionNotFound(
+            PrescriptionNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(PrescriptionItemNotFoundException.class)
+    public ResponseEntity<String> handlePrescriptionItemNotFound(
+            PrescriptionItemNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(InvalidPrescriptionOperationException.class)
+    public ResponseEntity<String> handleInvalidPrescriptionOperation(
+            InvalidPrescriptionOperationException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
     }
 }
