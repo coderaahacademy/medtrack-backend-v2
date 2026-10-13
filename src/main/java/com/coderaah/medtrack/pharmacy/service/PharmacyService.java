@@ -49,6 +49,33 @@ public class PharmacyService {
                 .toList();
     }
 
+    public PharmacyResponse updatePharmacy(Long id, PharmacyRequest request) {
+
+        Pharmacy pharmacy = findPharmacyOrThrow(id);
+
+        if (pharmacyRepository.existsByLicenseNumberAndIdNot(request.getLicenseNumber(), id)) {
+            throw new DuplicatePharmacyLicenseNumberException(
+                    "Pharmacy with license number " + request.getLicenseNumber() + " already exists");
+        }
+
+        applyRequest(pharmacy, request);
+
+        Pharmacy updatedPharmacy = pharmacyRepository.save(pharmacy);
+
+        return toResponse(updatedPharmacy);
+    }
+
+    public PharmacyResponse updatePharmacyStatus(Long id, boolean active) {
+
+        Pharmacy pharmacy = findPharmacyOrThrow(id);
+
+        pharmacy.setActive(active);
+
+        Pharmacy updatedPharmacy = pharmacyRepository.save(pharmacy);
+
+        return toResponse(updatedPharmacy);
+    }
+
     private void applyRequest(Pharmacy pharmacy, PharmacyRequest request) {
         pharmacy.setName(request.getName());
         pharmacy.setLicenseNumber(request.getLicenseNumber());
