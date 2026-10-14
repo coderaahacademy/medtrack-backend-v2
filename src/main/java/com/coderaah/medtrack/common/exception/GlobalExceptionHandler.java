@@ -29,6 +29,10 @@ import com.coderaah.medtrack.doctor.exception.RelationshipAlreadyEndedException;
 import com.coderaah.medtrack.doctor.exception.ScheduleExceptionNotFoundException;
 import com.coderaah.medtrack.pharmacy.exception.DuplicatePharmacyLicenseNumberException;
 import com.coderaah.medtrack.pharmacy.exception.PharmacyNotFoundException;
+import com.coderaah.medtrack.pharmacy.exception.DuplicateInventoryItemException;
+import com.coderaah.medtrack.pharmacy.exception.InvalidStockOperationException;
+import com.coderaah.medtrack.pharmacy.exception.InventoryItemNotFoundException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import com.coderaah.medtrack.doctor.exception.SpecialtyNotFoundException;
 import com.coderaah.medtrack.identity.exception.UserAccountNotFoundException;
 import com.coderaah.medtrack.medication.exception.MedicationNotFoundException;
@@ -351,5 +355,30 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleInvalidPrescriptionOperation(
             InvalidPrescriptionOperationException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(InventoryItemNotFoundException.class)
+    public ResponseEntity<String> handleInventoryItemNotFound(
+            InventoryItemNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(DuplicateInventoryItemException.class)
+    public ResponseEntity<String> handleDuplicateInventoryItem(
+            DuplicateInventoryItemException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(InvalidStockOperationException.class)
+    public ResponseEntity<String> handleInvalidStockOperation(
+            InvalidStockOperationException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<String> handleOptimisticLockingFailure(
+            ObjectOptimisticLockingFailureException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body("The record was modified by another request. Please reload and try again.");
     }
 }
