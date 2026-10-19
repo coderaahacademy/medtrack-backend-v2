@@ -9,7 +9,12 @@ import com.coderaah.medtrack.identity.dto.AssignRoleRequest;
 import com.coderaah.medtrack.identity.dto.ChangeUserAccountStatusRequest;
 import com.coderaah.medtrack.identity.dto.CreateUserAccountRequest;
 import com.coderaah.medtrack.identity.dto.UserAccountResponse;
+import com.coderaah.medtrack.identity.exception.DuplicateUserAccountException;
+import com.coderaah.medtrack.identity.exception.InvalidUserAccountRequestException;
+import com.coderaah.medtrack.identity.exception.PersonNotFoundException;
 import com.coderaah.medtrack.identity.exception.UserAccountNotFoundException;
+import com.coderaah.medtrack.identity.exception.UserRoleAlreadyAssignedException;
+import com.coderaah.medtrack.identity.exception.UserRoleNotAssignedException;
 import com.coderaah.medtrack.identity.repository.PersonRepository;
 import com.coderaah.medtrack.identity.repository.UserAccountRepository;
 import com.coderaah.medtrack.identity.repository.UserRoleRepository;
@@ -45,7 +50,7 @@ public class UserAccountService {
         String email = request.getEmail().trim().toLowerCase();
 
         if (userAccountRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException(
+            throw new DuplicateUserAccountException(
                     "Email is already in use"
             );
         }
@@ -56,14 +61,14 @@ public class UserAccountService {
 
             person = personRepository.findById(request.getPersonId())
                     .orElseThrow(() ->
-                            new IllegalArgumentException(
+                            new PersonNotFoundException(
                                     "Person not found: "
                                             + request.getPersonId()
                             )
                     );
 
             if (userAccountRepository.existsByPersonId(person.getId())) {
-                throw new IllegalArgumentException(
+                throw new DuplicateUserAccountException(
                         "This person already has a user account"
                 );
             }
@@ -73,7 +78,7 @@ public class UserAccountService {
             if (request.getFirstName() == null
                     || request.getFirstName().isBlank()) {
 
-                throw new IllegalArgumentException(
+                throw new InvalidUserAccountRequestException(
                         "First name is required"
                 );
             }
@@ -81,7 +86,7 @@ public class UserAccountService {
             if (request.getLastName() == null
                     || request.getLastName().isBlank()) {
 
-                throw new IllegalArgumentException(
+                throw new InvalidUserAccountRequestException(
                         "Last name is required"
                 );
             }
@@ -192,7 +197,7 @@ public class UserAccountService {
                 userAccountId,
                 role
         )) {
-            throw new IllegalArgumentException(
+            throw new UserRoleAlreadyAssignedException(
                     "Role is already assigned to this user"
             );
         }
@@ -218,7 +223,7 @@ public class UserAccountService {
                 userAccountId,
                 role
         )) {
-            throw new IllegalArgumentException(
+            throw new UserRoleNotAssignedException(
                     "Role is not assigned to this user"
             );
         }
@@ -249,6 +254,7 @@ public class UserAccountService {
 
         UserAccountResponse response =
                 new UserAccountResponse();
+
         response.setId(userAccount.getId());
         response.setPersonId(person.getId());
         response.setFirstName(person.getFirstName());

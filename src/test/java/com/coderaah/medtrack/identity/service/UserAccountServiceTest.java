@@ -5,7 +5,11 @@ import com.coderaah.medtrack.identity.dto.AssignRoleRequest;
 import com.coderaah.medtrack.identity.dto.ChangeUserAccountStatusRequest;
 import com.coderaah.medtrack.identity.dto.CreateUserAccountRequest;
 import com.coderaah.medtrack.identity.dto.UserAccountResponse;
+import com.coderaah.medtrack.identity.exception.DuplicateUserAccountException;
+import com.coderaah.medtrack.identity.exception.InvalidUserAccountRequestException;
 import com.coderaah.medtrack.identity.exception.UserAccountNotFoundException;
+import com.coderaah.medtrack.identity.exception.UserRoleAlreadyAssignedException;
+import com.coderaah.medtrack.identity.exception.UserRoleNotAssignedException;
 import com.coderaah.medtrack.identity.repository.PersonRepository;
 import com.coderaah.medtrack.identity.repository.UserAccountRepository;
 import com.coderaah.medtrack.identity.repository.UserRoleRepository;
@@ -119,7 +123,7 @@ class UserAccountServiceTest {
                 .thenReturn(true);
 
         assertThrows(
-                IllegalArgumentException.class,
+                DuplicateUserAccountException.class,
                 () -> userAccountService.createUserAccount(request)
         );
 
@@ -153,7 +157,7 @@ class UserAccountServiceTest {
                 .thenReturn(true);
 
         assertThrows(
-                IllegalArgumentException.class,
+                DuplicateUserAccountException.class,
                 () -> userAccountService.createUserAccount(request)
         );
 
@@ -173,7 +177,7 @@ class UserAccountServiceTest {
                 .thenReturn(false);
 
         assertThrows(
-                IllegalArgumentException.class,
+                InvalidUserAccountRequestException.class,
                 () -> userAccountService.createUserAccount(request)
         );
 
@@ -424,7 +428,7 @@ class UserAccountServiceTest {
         )).thenReturn(true);
 
         assertThrows(
-                IllegalArgumentException.class,
+                UserRoleAlreadyAssignedException.class,
                 () -> userAccountService.assignRole(10L, request)
         );
 
@@ -547,7 +551,7 @@ class UserAccountServiceTest {
         )).thenReturn(false);
 
         assertThrows(
-                IllegalArgumentException.class,
+                UserRoleNotAssignedException.class,
                 () -> userAccountService.removeRole(
                         10L,
                         Role.DOCTOR
