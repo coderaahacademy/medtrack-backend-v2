@@ -32,6 +32,11 @@ import com.coderaah.medtrack.pharmacy.exception.PharmacyNotFoundException;
 import com.coderaah.medtrack.pharmacy.exception.DuplicateInventoryItemException;
 import com.coderaah.medtrack.pharmacy.exception.InvalidStockOperationException;
 import com.coderaah.medtrack.pharmacy.exception.InventoryItemNotFoundException;
+import com.coderaah.medtrack.pharmacy.exception.ActiveSubmissionAlreadyExistsException;
+import com.coderaah.medtrack.pharmacy.exception.InvalidSubmissionTransitionException;
+import com.coderaah.medtrack.pharmacy.exception.PharmacyNotActiveException;
+import com.coderaah.medtrack.pharmacy.exception.PrescriptionNotSubmittableException;
+import com.coderaah.medtrack.pharmacy.exception.PrescriptionSubmissionNotFoundException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import com.coderaah.medtrack.doctor.exception.SpecialtyNotFoundException;
 
@@ -520,5 +525,50 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body("The record was modified by another request. Please reload and try again.");
+    }
+
+    @ExceptionHandler(PrescriptionSubmissionNotFoundException.class)
+    public ResponseEntity<String> handlePrescriptionSubmissionNotFound(
+            PrescriptionSubmissionNotFoundException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(PrescriptionNotSubmittableException.class)
+    public ResponseEntity<String> handlePrescriptionNotSubmittable(
+            PrescriptionNotSubmittableException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(PharmacyNotActiveException.class)
+    public ResponseEntity<String> handlePharmacyNotActive(
+            PharmacyNotActiveException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(ActiveSubmissionAlreadyExistsException.class)
+    public ResponseEntity<String> handleActiveSubmissionAlreadyExists(
+            ActiveSubmissionAlreadyExistsException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(InvalidSubmissionTransitionException.class)
+    public ResponseEntity<String> handleInvalidSubmissionTransition(
+            InvalidSubmissionTransitionException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
     }
 }
