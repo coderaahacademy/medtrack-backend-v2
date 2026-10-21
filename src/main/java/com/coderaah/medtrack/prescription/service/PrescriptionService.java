@@ -1,8 +1,6 @@
 package com.coderaah.medtrack.prescription.service;
 
 import com.coderaah.medtrack.identity.domain.UserAccount;
-import com.coderaah.medtrack.identity.exception.UserAccountNotFoundException;
-import com.coderaah.medtrack.identity.repository.UserAccountRepository;
 import com.coderaah.medtrack.medication.domain.Medication;
 import com.coderaah.medtrack.medication.exception.MedicationNotFoundException;
 import com.coderaah.medtrack.medication.repository.MedicationRepository;
@@ -40,7 +38,7 @@ public class PrescriptionService {
     private final PrescriptionStatusHistoryRepository historyRepository;
     private final VisitRepository visitRepository;
     private final MedicationRepository medicationRepository;
-    private final UserAccountRepository userAccountRepository;
+    private final PrescriptionStatusTransitionService transitionService;
 
     public PrescriptionService(
             PrescriptionRepository prescriptionRepository,
@@ -48,13 +46,13 @@ public class PrescriptionService {
             PrescriptionStatusHistoryRepository historyRepository,
             VisitRepository visitRepository,
             MedicationRepository medicationRepository,
-            UserAccountRepository userAccountRepository) {
+            PrescriptionStatusTransitionService transitionService) {
         this.prescriptionRepository = prescriptionRepository;
         this.itemRepository = itemRepository;
         this.historyRepository = historyRepository;
         this.visitRepository = visitRepository;
         this.medicationRepository = medicationRepository;
-        this.userAccountRepository = userAccountRepository;
+        this.transitionService = transitionService;
     }
 
     public PrescriptionResponse createPrescription(
@@ -65,7 +63,7 @@ public class PrescriptionService {
         Visit visit = visitRepository.findById(visitId)
                 .orElseThrow(() -> new VisitNotFoundException("Visit not found: " + visitId));
 
-        UserAccount actor = findActor(actorUserId);
+        UserAccount actor = transitionService.findActor(actorUserId);
 
         Prescription prescription = new Prescription(
                 visit,
@@ -75,7 +73,8 @@ public class PrescriptionService {
                 request.getNotes());
 
         prescription = prescriptionRepository.save(prescription);
-        recordStatusChange(prescription, null, PrescriptionStatus.DRAFT, actor, null);
+        transitionService.recordStatusChange(
+                prescription, null, PrescriptionStatus.DRAFT, actor, null);
 
         return toResponse(prescription);
     }
@@ -158,15 +157,11 @@ public class PrescriptionService {
                     "The expiration date cannot be before the issue date.");
         }
 
-        UserAccount actor = findActor(actorUserId);
-        PrescriptionStatus oldStatus = prescription.getStatus();
+        UserAccount actor = transitionService.findActor(actorUserId);
 
         prescription.setIssuedAt(issuedAt);
-        prescription.setStatus(PrescriptionStatus.ISSUED);
-        prescription = prescriptionRepository.save(prescription);
-
-        recordStatusChange(
-                prescription, oldStatus, PrescriptionStatus.ISSUED, actor, null);
+        prescription = transitionService.changeStatus(
+                prescription, PrescriptionStatus.ISSUED, actor, null);
 
         return toResponse(prescription);
     }
@@ -179,7 +174,7 @@ public class PrescriptionService {
         Prescription prescription = findPrescription(prescriptionId);
         PrescriptionStatus oldStatus = prescription.getStatus();
 
-        if (isExpired(prescription)) {
+        if (transitionService.isExpired(prescription)) {
             throw new InvalidPrescriptionOperationException(
                     "An expired prescription cannot be cancelled.");
         }
@@ -201,15 +196,12 @@ public class PrescriptionService {
                     "Cancellation reason must not exceed 255 characters.");
         }
 
-        UserAccount actor = findActor(actorUserId);
+        UserAccount actor = transitionService.findActor(actorUserId);
 
-        prescription.setStatus(PrescriptionStatus.CANCELLED);
         prescription.setCancelledAt(LocalDateTime.now());
         prescription.setCancellationReason(reason);
-        prescription = prescriptionRepository.save(prescription);
-
-        recordStatusChange(
-                prescription, oldStatus, PrescriptionStatus.CANCELLED, actor, reason);
+        prescription = transitionService.changeStatus(
+                prescription, PrescriptionStatus.CANCELLED, actor, reason);
 
         return toResponse(prescription);
     }
@@ -256,17 +248,6 @@ public class PrescriptionService {
                         "Prescription not found: " + prescriptionId));
     }
 
-    private UserAccount findActor(Long actorUserId) {
-        if (actorUserId == null) {
-            throw new InvalidPrescriptionOperationException(
-                    "actorUserId is required to record the operation.");
-        }
-
-        return userAccountRepository.findById(actorUserId)
-                .orElseThrow(() -> new UserAccountNotFoundException(
-                        "User account not found: " + actorUserId));
-    }
-
     private Medication findActiveMedication(Long medicationId) {
         Medication medication = medicationRepository.findById(medicationId)
                 .orElseThrow(() -> new MedicationNotFoundException(
@@ -287,34 +268,6 @@ public class PrescriptionService {
         }
     }
 
-    private boolean isExpired(Prescription prescription) {
-        if (prescription.getExpiresAt() == null) {
-            return false;
-        }
-
-        PrescriptionStatus status = prescription.getStatus();
-        if (status == PrescriptionStatus.DRAFT
-                || status == PrescriptionStatus.CANCELLED
-                || status == PrescriptionStatus.FULFILLED) {
-            return false;
-        }
-
-        return prescription.getExpiresAt().isBefore(LocalDate.now());
-    }
-
-    private void recordStatusChange(
-            Prescription prescription,
-            PrescriptionStatus oldStatus,
-            PrescriptionStatus newStatus,
-            UserAccount actor,
-            String reason) {
-
-        PrescriptionStatusHistory history = new PrescriptionStatusHistory(
-                prescription, oldStatus, newStatus, actor, reason);
-
-        historyRepository.save(history);
-    }
-
     private PrescriptionResponse toResponse(Prescription prescription) {
         PrescriptionResponse response = new PrescriptionResponse();
 
@@ -322,7 +275,7 @@ public class PrescriptionService {
         response.setVisitId(prescription.getVisit().getId());
         response.setPatientId(prescription.getVisit().getPatient().getId());
 
-        if (isExpired(prescription)) {
+        if (transitionService.isExpired(prescription)) {
             response.setStatus(PrescriptionStatus.EXPIRED);
         } else {
             response.setStatus(prescription.getStatus());

@@ -24,9 +24,10 @@ import com.coderaah.medtrack.visit.repository.VisitRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
+
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -62,8 +63,24 @@ class PrescriptionServiceTest {
     @Mock
     private UserAccountRepository userAccountRepository;
 
-    @InjectMocks
     private PrescriptionService prescriptionService;
+
+    @BeforeEach
+    void setUp() {
+        PrescriptionStatusTransitionService transitionService =
+                new PrescriptionStatusTransitionService(
+                        prescriptionRepository,
+                        historyRepository,
+                        userAccountRepository);
+
+        prescriptionService = new PrescriptionService(
+                prescriptionRepository,
+                itemRepository,
+                historyRepository,
+                visitRepository,
+                medicationRepository,
+                transitionService);
+    }
 
     @Test
     void addItem_rejectsInactiveMedication() {
