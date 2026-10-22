@@ -1,5 +1,6 @@
 package com.coderaah.medtrack.common.exception;
 
+import com.coderaah.medtrack.pharmacy.exception.*;
 import com.coderaah.medtrack.visit.exception.InvalidAppointmentForVisitException;
 import com.coderaah.medtrack.visit.exception.InvalidVisitStatusException;
 import com.coderaah.medtrack.visit.exception.VisitAlreadyExistsException;
@@ -27,11 +28,6 @@ import com.coderaah.medtrack.doctor.exception.InvalidScheduleTimeRangeException;
 import com.coderaah.medtrack.doctor.exception.PatientDoctorRelationshipNotFoundException;
 import com.coderaah.medtrack.doctor.exception.RelationshipAlreadyEndedException;
 import com.coderaah.medtrack.doctor.exception.ScheduleExceptionNotFoundException;
-import com.coderaah.medtrack.pharmacy.exception.DuplicatePharmacyLicenseNumberException;
-import com.coderaah.medtrack.pharmacy.exception.PharmacyNotFoundException;
-import com.coderaah.medtrack.pharmacy.exception.DuplicateInventoryItemException;
-import com.coderaah.medtrack.pharmacy.exception.InvalidStockOperationException;
-import com.coderaah.medtrack.pharmacy.exception.InventoryItemNotFoundException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import com.coderaah.medtrack.doctor.exception.SpecialtyNotFoundException;
 import com.coderaah.medtrack.identity.exception.UserAccountNotFoundException;
@@ -380,5 +376,33 @@ public class GlobalExceptionHandler {
             ObjectOptimisticLockingFailureException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body("The record was modified by another request. Please reload and try again.");
+    }
+
+    @ExceptionHandler(DuplicateActivePharmacyStaffMembershipException.class)
+    public ResponseEntity<String> handleDuplicateActivePharmacyStaffMembership(
+            DuplicateActivePharmacyStaffMembershipException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(PharmacyStaffMembershipNotFoundException.class)
+    public ResponseEntity<String> handlePharmacyStaffMembershipNotFound(
+            PharmacyStaffMembershipNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(PharmacyNotActiveException.class)
+    public ResponseEntity<String> handlePharmacyNotActive(
+            PharmacyNotActiveException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(PharmacyStaffMembershipNotActiveException.class)
+    public ResponseEntity<String> handlePharmacyStaffMembershipNotActive(
+            PharmacyStaffMembershipNotActiveException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
     }
 }
