@@ -30,7 +30,14 @@ import com.coderaah.medtrack.doctor.exception.RelationshipAlreadyEndedException;
 import com.coderaah.medtrack.doctor.exception.ScheduleExceptionNotFoundException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import com.coderaah.medtrack.doctor.exception.SpecialtyNotFoundException;
+
 import com.coderaah.medtrack.identity.exception.UserAccountNotFoundException;
+import com.coderaah.medtrack.identity.exception.DuplicateUserAccountException;
+import com.coderaah.medtrack.identity.exception.PersonNotFoundException;
+import com.coderaah.medtrack.identity.exception.InvalidUserAccountRequestException;
+import com.coderaah.medtrack.identity.exception.UserRoleAlreadyAssignedException;
+import com.coderaah.medtrack.identity.exception.UserRoleNotAssignedException;
+
 import com.coderaah.medtrack.medication.exception.MedicationNotFoundException;
 import com.coderaah.medtrack.patient.exception.AllergyNotFoundException;
 import com.coderaah.medtrack.patient.exception.ConditionNotFoundException;
@@ -39,11 +46,13 @@ import com.coderaah.medtrack.patient.exception.PatientNotFoundException;
 import com.coderaah.medtrack.prescription.exception.PrescriptionNotFoundException;
 import com.coderaah.medtrack.prescription.exception.PrescriptionItemNotFoundException;
 import com.coderaah.medtrack.prescription.exception.InvalidPrescriptionOperationException;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -238,143 +247,274 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AllergyNotFoundException.class)
-    public ResponseEntity<String> handleAllergyNotFound(AllergyNotFoundException exception) {
+    public ResponseEntity<String> handleAllergyNotFound(
+            AllergyNotFoundException exception) {
+
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(exception.getMessage());
     }
 
     @ExceptionHandler(ConditionNotFoundException.class)
-    public ResponseEntity<String> handleConditionNotFound(ConditionNotFoundException exception) {
+    public ResponseEntity<String> handleConditionNotFound(
+            ConditionNotFoundException exception) {
+
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(exception.getMessage());
     }
+
     @ExceptionHandler(MedicationNotFoundException.class)
-    public ResponseEntity<String> handleMedicationNotFound(MedicationNotFoundException exception){
+    public ResponseEntity<String> handleMedicationNotFound(
+            MedicationNotFoundException exception) {
+
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(exception.getMessage());
     }
+
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<String> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException exception) {
+    public ResponseEntity<String> handleMethodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException exception) {
+
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body("Invalid value for parameter '" + exception.getName() + "': " + exception.getValue());
+                .body("Invalid value for parameter '"
+                        + exception.getName()
+                        + "': "
+                        + exception.getValue());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<String> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException exception) {
+
+        String message = exception.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(error ->
+                        error.getField() + ": " + error.getDefaultMessage())
+                .findFirst()
+                .orElse("Invalid request");
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(message);
     }
 
     @ExceptionHandler(AppointmentNotFoundException.class)
     public ResponseEntity<String> handleAppointmentNotFound(
             AppointmentNotFoundException exception) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(UserAccountNotFoundException.class)
     public ResponseEntity<String> handleUserAccountNotFound(
             UserAccountNotFoundException exception) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(PersonNotFoundException.class)
+    public ResponseEntity<String> handlePersonNotFound(
+            PersonNotFoundException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(DuplicateUserAccountException.class)
+    public ResponseEntity<String> handleDuplicateUserAccount(
+            DuplicateUserAccountException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(InvalidUserAccountRequestException.class)
+    public ResponseEntity<String> handleInvalidUserAccountRequest(
+            InvalidUserAccountRequestException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(UserRoleAlreadyAssignedException.class)
+    public ResponseEntity<String> handleUserRoleAlreadyAssigned(
+            UserRoleAlreadyAssignedException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
+    }
+
+    @ExceptionHandler(UserRoleNotAssignedException.class)
+    public ResponseEntity<String> handleUserRoleNotAssigned(
+            UserRoleNotAssignedException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(InvalidAppointmentTimeException.class)
     public ResponseEntity<String> handleInvalidAppointmentTime(
             InvalidAppointmentTimeException exception) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(CancellationReasonRequiredException.class)
     public ResponseEntity<String> handleCancellationReasonRequired(
             CancellationReasonRequiredException exception) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(DoctorNotActiveException.class)
     public ResponseEntity<String> handleDoctorNotActive(
             DoctorNotActiveException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(DoctorNotAvailableException.class)
     public ResponseEntity<String> handleDoctorNotAvailable(
             DoctorNotAvailableException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(AppointmentOverlapException.class)
     public ResponseEntity<String> handleAppointmentOverlap(
             AppointmentOverlapException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(InvalidStatusTransitionException.class)
     public ResponseEntity<String> handleInvalidStatusTransition(
             InvalidStatusTransitionException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(VisitNotFoundException.class)
     public ResponseEntity<String> handleVisitNotFound(
             VisitNotFoundException exception) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(InvalidVisitStatusException.class)
     public ResponseEntity<String> handleInvalidVisitStatus(
             InvalidVisitStatusException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(VisitAlreadyExistsException.class)
     public ResponseEntity<String> handleVisitAlreadyExists(
             VisitAlreadyExistsException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(InvalidAppointmentForVisitException.class)
     public ResponseEntity<String> handleInvalidAppointmentForVisit(
             InvalidAppointmentForVisitException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(PrescriptionNotFoundException.class)
     public ResponseEntity<String> handlePrescriptionNotFound(
             PrescriptionNotFoundException exception) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(PrescriptionItemNotFoundException.class)
     public ResponseEntity<String> handlePrescriptionItemNotFound(
             PrescriptionItemNotFoundException exception) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(InvalidPrescriptionOperationException.class)
     public ResponseEntity<String> handleInvalidPrescriptionOperation(
             InvalidPrescriptionOperationException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(InventoryItemNotFoundException.class)
     public ResponseEntity<String> handleInventoryItemNotFound(
             InventoryItemNotFoundException exception) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(DuplicateInventoryItemException.class)
     public ResponseEntity<String> handleDuplicateInventoryItem(
             DuplicateInventoryItemException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(InvalidStockOperationException.class)
     public ResponseEntity<String> handleInvalidStockOperation(
             InvalidStockOperationException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
     }
 
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<String> handleOptimisticLockingFailure(
             ObjectOptimisticLockingFailureException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
                 .body("The record was modified by another request. Please reload and try again.");
     }
 
