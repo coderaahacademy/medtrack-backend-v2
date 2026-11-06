@@ -13,9 +13,14 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
 import java.util.List;
+import com.coderaah.medtrack.common.config.SecurityConfig;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -25,13 +30,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 
 @WebMvcTest(PatientAllergyController.class)
+@Import(SecurityConfig.class)
 public class PatientAllergyControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
     private PatientAllergyService patientAllergyService;
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
+    private JwtRequestPostProcessor doctor() {
+        return jwt()
+                .jwt(token -> token.subject("9"))
+                .authorities(
+                        new SimpleGrantedAuthority("ROLE_DOCTOR"));
+    }
     @Test
     void createAllergy_returnsCreated() throws Exception {
 
@@ -46,6 +60,7 @@ public class PatientAllergyControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(post("/api/patients/1/allergies")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -66,6 +81,7 @@ public class PatientAllergyControllerTest {
     void createAllergy_returnsBadRequest_whenAllergenIsBlank() throws Exception {
 
         mockMvc.perform(post("/api/patients/1/allergies")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -82,6 +98,7 @@ public class PatientAllergyControllerTest {
                 .thenThrow(new PatientNotFoundException("Patient not found"));
 
         mockMvc.perform(post("/api/patients/999/allergies")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -105,7 +122,8 @@ public class PatientAllergyControllerTest {
         when(patientAllergyService.getAllergies(1L, null))
                 .thenReturn(List.of(allergy1, allergy2));
 
-        mockMvc.perform(get("/api/patients/1/allergies"))
+        mockMvc.perform(get("/api/patients/1/allergies")
+                .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].allergen").value("Penicillin"))
                 .andExpect(jsonPath("$[1].allergen").value("Peanuts"));
@@ -122,7 +140,8 @@ public class PatientAllergyControllerTest {
         when(patientAllergyService.getAllergies(1L, AllergyStatus.ACTIVE))
                 .thenReturn(List.of(activeAllergy));
 
-        mockMvc.perform(get("/api/patients/1/allergies?status=ACTIVE"))
+        mockMvc.perform(get("/api/patients/1/allergies?status=ACTIVE")
+                .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("ACTIVE"));
     }
@@ -133,13 +152,15 @@ public class PatientAllergyControllerTest {
         when(patientAllergyService.getAllergies(eq(999L), any()))
                 .thenThrow(new PatientNotFoundException("Patient not found"));
 
-        mockMvc.perform(get("/api/patients/999/allergies"))
+        mockMvc.perform(get("/api/patients/999/allergies")
+                .with(doctor()))
                 .andExpect(status().isNotFound());
     }
     @Test
     void getAllergies_returnsBadRequest_whenStatusIsInvalid() throws Exception {
 
-        mockMvc.perform(get("/api/patients/1/allergies?status=INVALID_VALUE"))
+        mockMvc.perform(get("/api/patients/1/allergies?status=INVALID_VALUE")
+                .with(doctor()))
                 .andExpect(status().isBadRequest());
     }
 
@@ -155,6 +176,7 @@ public class PatientAllergyControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(put("/api/patients/1/allergies/10")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -174,6 +196,7 @@ public class PatientAllergyControllerTest {
                 .thenThrow(new AllergyNotFoundException("Allergy not found"));
 
         mockMvc.perform(put("/api/patients/1/allergies/999")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -194,6 +217,7 @@ public class PatientAllergyControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(patch("/api/patients/1/allergies/10/status")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -208,6 +232,7 @@ public class PatientAllergyControllerTest {
     void changeAllergyStatus_returnsBadRequest_whenStatusIsMissing() throws Exception {
 
         mockMvc.perform(patch("/api/patients/1/allergies/10/status")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {}
@@ -222,6 +247,7 @@ public class PatientAllergyControllerTest {
                 .thenThrow(new AllergyNotFoundException("Allergy not found"));
 
         mockMvc.perform(patch("/api/patients/1/allergies/999/status")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {

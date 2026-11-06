@@ -11,7 +11,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import com.coderaah.medtrack.common.config.SecurityConfig;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -22,13 +28,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(PatientConditionController.class)
+@Import(SecurityConfig.class)
 public class PatientConditionControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
     private PatientConditionService patientConditionService;
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
+    private JwtRequestPostProcessor doctor() {
+        return jwt()
+                .jwt(token -> token.subject("9"))
+                .authorities(
+                        new SimpleGrantedAuthority("ROLE_DOCTOR"));
+    }
     @Test
     void createCondition_returnsCreated() throws Exception {
 
@@ -43,6 +58,7 @@ public class PatientConditionControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(post("/api/patients/1/conditions")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -63,6 +79,7 @@ public class PatientConditionControllerTest {
     void createCondition_returnsBadRequest_whenConditionNameIsBlank() throws Exception {
 
         mockMvc.perform(post("/api/patients/1/conditions")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -79,6 +96,7 @@ public class PatientConditionControllerTest {
                 .thenThrow(new PatientNotFoundException("Patient not found"));
 
         mockMvc.perform(post("/api/patients/999/conditions")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -102,7 +120,8 @@ public class PatientConditionControllerTest {
         when(patientConditionService.getConditions(1L, null))
                 .thenReturn(List.of(condition1, condition2));
 
-        mockMvc.perform(get("/api/patients/1/conditions"))
+        mockMvc.perform(get("/api/patients/1/conditions")
+                .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].conditionName").value("Diabetes"))
                 .andExpect(jsonPath("$[1].conditionName").value("Asthma"));
@@ -119,7 +138,8 @@ public class PatientConditionControllerTest {
         when(patientConditionService.getConditions(1L, PatientConditionStatus.ACTIVE))
                 .thenReturn(List.of(activeCondition));
 
-        mockMvc.perform(get("/api/patients/1/conditions?status=ACTIVE"))
+        mockMvc.perform(get("/api/patients/1/conditions?status=ACTIVE")
+                .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("ACTIVE"));
     }
@@ -130,13 +150,15 @@ public class PatientConditionControllerTest {
         when(patientConditionService.getConditions(eq(999L), any()))
                 .thenThrow(new PatientNotFoundException("Patient not found"));
 
-        mockMvc.perform(get("/api/patients/999/conditions"))
+        mockMvc.perform(get("/api/patients/999/conditions")
+                .with(doctor()))
                 .andExpect(status().isNotFound());
     }
     @Test
     void getConditions_returnsBadRequest_whenStatusIsInvalid() throws Exception {
 
-        mockMvc.perform(get("/api/patients/1/conditions?status=INVALID_VALUE"))
+        mockMvc.perform(get("/api/patients/1/conditions?status=INVALID_VALUE")
+                .with(doctor()))
                 .andExpect(status().isBadRequest());
     }
 
@@ -152,6 +174,7 @@ public class PatientConditionControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(put("/api/patients/1/conditions/10")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -171,6 +194,7 @@ public class PatientConditionControllerTest {
                 .thenThrow(new ConditionNotFoundException("Condition not found"));
 
         mockMvc.perform(put("/api/patients/1/conditions/999")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -191,6 +215,7 @@ public class PatientConditionControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(patch("/api/patients/1/conditions/10/status")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -205,6 +230,7 @@ public class PatientConditionControllerTest {
     void changeConditionStatus_returnsBadRequest_whenStatusIsMissing() throws Exception {
 
         mockMvc.perform(patch("/api/patients/1/conditions/10/status")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {}
@@ -219,6 +245,7 @@ public class PatientConditionControllerTest {
                 .thenThrow(new ConditionNotFoundException("Condition not found"));
 
         mockMvc.perform(patch("/api/patients/1/conditions/999/status")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {

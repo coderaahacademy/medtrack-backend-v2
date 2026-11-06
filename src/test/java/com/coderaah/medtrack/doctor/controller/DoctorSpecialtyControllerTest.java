@@ -9,7 +9,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
+import com.coderaah.medtrack.common.config.SecurityConfig;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import com.coderaah.medtrack.common.exception.GlobalExceptionHandler;
 import com.coderaah.medtrack.doctor.dto.AssignDoctorSpecialtyRequest;
 import com.coderaah.medtrack.doctor.dto.DoctorSpecialtyResponse;
@@ -29,7 +33,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(DoctorSpecialtyController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, SecurityConfig.class})
 class DoctorSpecialtyControllerTest {
 
     @Autowired
@@ -40,7 +44,15 @@ class DoctorSpecialtyControllerTest {
 
     @MockitoBean
     private DoctorSpecialtyService doctorSpecialtyService;
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
+    private JwtRequestPostProcessor doctor() {
+        return jwt()
+                .jwt(token -> token.subject("9"))
+                .authorities(
+                        new SimpleGrantedAuthority("ROLE_DOCTOR"));
+    }
     @Test
     void assign_returns201WithBody() throws Exception {
         DoctorSpecialtyResponse response =
@@ -48,6 +60,7 @@ class DoctorSpecialtyControllerTest {
         when(doctorSpecialtyService.assign(eq(1L), any())).thenReturn(response);
 
         mockMvc.perform(post("/api/doctors/1/specialties")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AssignDoctorSpecialtyRequest(2L, true))))
                 .andExpect(status().isCreated())
@@ -58,6 +71,7 @@ class DoctorSpecialtyControllerTest {
     @Test
     void assign_returns400WhenSpecialtyIdMissing() throws Exception {
         mockMvc.perform(post("/api/doctors/1/specialties")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"primarySpecialty\":false}"))
                 .andExpect(status().isBadRequest());
@@ -69,6 +83,7 @@ class DoctorSpecialtyControllerTest {
                 .thenThrow(new DoctorNotFoundException("Doctor 99 not found"));
 
         mockMvc.perform(post("/api/doctors/99/specialties")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AssignDoctorSpecialtyRequest(2L, false))))
                 .andExpect(status().isNotFound());
@@ -80,6 +95,7 @@ class DoctorSpecialtyControllerTest {
                 .thenThrow(new DuplicateDoctorSpecialtyException("Doctor 1 already has specialty 2 assigned"));
 
         mockMvc.perform(post("/api/doctors/1/specialties")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AssignDoctorSpecialtyRequest(2L, false))))
                 .andExpect(status().isConflict());
@@ -91,14 +107,16 @@ class DoctorSpecialtyControllerTest {
                 new DoctorSpecialtyResponse(1L, 1L, 2L, "CARDIO", "Cardiology", true, LocalDateTime.now());
         when(doctorSpecialtyService.findByDoctor(1L)).thenReturn(List.of(response));
 
-        mockMvc.perform(get("/api/doctors/1/specialties"))
+        mockMvc.perform(get("/api/doctors/1/specialties")
+                .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].specialtyCode").value("CARDIO"));
     }
 
     @Test
     void remove_returns204() throws Exception {
-        mockMvc.perform(delete("/api/doctors/1/specialties/2"))
+        mockMvc.perform(delete("/api/doctors/1/specialties/2")
+                        .with(doctor()))
                 .andExpect(status().isNoContent());
     }
 
@@ -107,7 +125,7 @@ class DoctorSpecialtyControllerTest {
         doThrow(new DoctorSpecialtyNotFoundException("Doctor 1 has no assignment for specialty 2"))
                 .when(doctorSpecialtyService).remove(1L, 2L);
 
-        mockMvc.perform(delete("/api/doctors/1/specialties/2"))
+        mockMvc.perform(delete("/api/doctors/1/specialties/2") .with(doctor()))
                 .andExpect(status().isNotFound());
     }
 }

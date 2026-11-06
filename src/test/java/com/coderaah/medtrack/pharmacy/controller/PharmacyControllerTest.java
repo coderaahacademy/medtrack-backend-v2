@@ -10,7 +10,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import com.coderaah.medtrack.common.config.SecurityConfig;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -26,6 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(PharmacyController.class)
+@Import(SecurityConfig.class)
 public class PharmacyControllerTest {
 
     @Autowired
@@ -33,7 +40,15 @@ public class PharmacyControllerTest {
 
     @MockitoBean
     private PharmacyService pharmacyService;
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
+    private JwtRequestPostProcessor pharmacyStaff() {
+        return jwt()
+                .jwt(token -> token.subject("9"))
+                .authorities(
+                        new SimpleGrantedAuthority("ROLE_PHARMACY_STAFF"));
+    }
     private static final String VALID_JSON = """
             {
               "name": "Apotheke Nord",
@@ -58,6 +73,7 @@ public class PharmacyControllerTest {
         when(pharmacyService.createPharmacy(any())).thenReturn(sampleResponse(true));
 
         mockMvc.perform(post("/api/pharmacies")
+                        .with(pharmacyStaff())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_JSON))
                 .andExpect(status().isCreated())
@@ -70,6 +86,7 @@ public class PharmacyControllerTest {
     void createPharmacy_returnsBadRequest_whenNameIsBlank() throws Exception {
 
         mockMvc.perform(post("/api/pharmacies")
+                        .with(pharmacyStaff())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "name": "", "licenseNumber": "L-123" }
@@ -86,6 +103,7 @@ public class PharmacyControllerTest {
                 .thenThrow(new DuplicatePharmacyLicenseNumberException("duplicate"));
 
         mockMvc.perform(post("/api/pharmacies")
+                        .with(pharmacyStaff())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_JSON))
                 .andExpect(status().isConflict());
@@ -96,7 +114,8 @@ public class PharmacyControllerTest {
 
         when(pharmacyService.listPharmacies()).thenReturn(List.of(sampleResponse(true)));
 
-        mockMvc.perform(get("/api/pharmacies"))
+        mockMvc.perform(get("/api/pharmacies")
+                        .with(pharmacyStaff()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Apotheke Nord"));
     }
@@ -107,7 +126,8 @@ public class PharmacyControllerTest {
         when(pharmacyService.getPharmacyById(999L))
                 .thenThrow(new PharmacyNotFoundException("not found"));
 
-        mockMvc.perform(get("/api/pharmacies/999"))
+        mockMvc.perform(get("/api/pharmacies/999")
+                        .with(pharmacyStaff()))
                 .andExpect(status().isNotFound());
     }
 
@@ -117,6 +137,7 @@ public class PharmacyControllerTest {
         when(pharmacyService.updatePharmacy(eq(1L), any())).thenReturn(sampleResponse(true));
 
         mockMvc.perform(put("/api/pharmacies/1")
+                        .with(pharmacyStaff())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_JSON))
                 .andExpect(status().isOk())
@@ -129,6 +150,7 @@ public class PharmacyControllerTest {
         when(pharmacyService.updatePharmacyStatus(1L, false)).thenReturn(sampleResponse(false));
 
         mockMvc.perform(patch("/api/pharmacies/1/status")
+                        .with(pharmacyStaff())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "active": false }
@@ -141,6 +163,7 @@ public class PharmacyControllerTest {
     void updatePharmacyStatus_returnsBadRequest_whenActiveMissing() throws Exception {
 
         mockMvc.perform(patch("/api/pharmacies/1/status")
+                        .with(pharmacyStaff())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
