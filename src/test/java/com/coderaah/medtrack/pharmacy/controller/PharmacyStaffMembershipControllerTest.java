@@ -14,7 +14,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import com.coderaah.medtrack.common.config.SecurityConfig;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -30,8 +36,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 @WebMvcTest(PharmacyStaffMembershipController.class)
+@Import(SecurityConfig.class)
 public class PharmacyStaffMembershipControllerTest {
 
     private static final String PHARMACY_STAFF = "/api/pharmacies/1/staff";
@@ -42,7 +48,15 @@ public class PharmacyStaffMembershipControllerTest {
 
     @MockitoBean
     private PharmacyStaffMembershipService pharmacyStaffMembershipService;
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
+    private JwtRequestPostProcessor admin() {
+        return jwt()
+                .jwt(token -> token.subject("9"))
+                .authorities(
+                        new SimpleGrantedAuthority("ROLE_ADMIN"));
+    }
     private PharmacyStaffMembershipResponse activeResponse() {
         PharmacyStaffMembershipResponse response = new PharmacyStaffMembershipResponse();
         response.setId(10L);
@@ -71,6 +85,7 @@ public class PharmacyStaffMembershipControllerTest {
         when(pharmacyStaffMembershipService.assignStaff(eq(1L), any())).thenReturn(activeResponse());
 
         mockMvc.perform(post(PHARMACY_STAFF)
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "userAccountId": 7, "staffRole": "PHARMACIST" }
@@ -86,6 +101,7 @@ public class PharmacyStaffMembershipControllerTest {
     void assignStaff_returnsBadRequest_whenUserAccountIdMissing() throws Exception {
 
         mockMvc.perform(post(PHARMACY_STAFF)
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "staffRole": "PHARMACIST" }
@@ -99,6 +115,7 @@ public class PharmacyStaffMembershipControllerTest {
     void assignStaff_returnsBadRequest_whenStaffRoleInvalid() throws Exception {
 
         mockMvc.perform(post(PHARMACY_STAFF)
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "userAccountId": 7, "staffRole": "DOCTOR" }
@@ -115,6 +132,7 @@ public class PharmacyStaffMembershipControllerTest {
                 .thenThrow(new DuplicateActivePharmacyStaffMembershipException("duplicate"));
 
         mockMvc.perform(post(PHARMACY_STAFF)
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "userAccountId": 7, "staffRole": "STAFF" }
@@ -129,6 +147,7 @@ public class PharmacyStaffMembershipControllerTest {
                 .thenThrow(new PharmacyNotFoundException("not found"));
 
         mockMvc.perform(post(PHARMACY_STAFF)
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "userAccountId": 7, "staffRole": "STAFF" }
@@ -143,6 +162,7 @@ public class PharmacyStaffMembershipControllerTest {
                 .thenThrow(new UserAccountNotFoundException("not found"));
 
         mockMvc.perform(post(PHARMACY_STAFF)
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "userAccountId": 999, "staffRole": "STAFF" }
@@ -158,7 +178,8 @@ public class PharmacyStaffMembershipControllerTest {
         when(pharmacyStaffMembershipService.getPharmacyStaff(eq(1L), isNull()))
                 .thenReturn(List.of(activeResponse(), endedResponse()));
 
-        mockMvc.perform(get(PHARMACY_STAFF))
+        mockMvc.perform(get(PHARMACY_STAFF)
+                .with(admin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].active").value(true))
@@ -170,7 +191,9 @@ public class PharmacyStaffMembershipControllerTest {
 
         when(pharmacyStaffMembershipService.getPharmacyStaff(1L, true)).thenReturn(List.of(activeResponse()));
 
-        mockMvc.perform(get(PHARMACY_STAFF).param("active", "true"))
+        mockMvc.perform(get(PHARMACY_STAFF)
+                        .with(admin())
+                        .param("active", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].active").value(true));
@@ -183,7 +206,8 @@ public class PharmacyStaffMembershipControllerTest {
 
         when(pharmacyStaffMembershipService.getStaffMembership(20L)).thenReturn(endedResponse());
 
-        mockMvc.perform(get(MEMBERSHIPS + "/20"))
+        mockMvc.perform(get(MEMBERSHIPS + "/20")
+                .with(admin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(20))
                 .andExpect(jsonPath("$.active").value(false))
@@ -196,7 +220,8 @@ public class PharmacyStaffMembershipControllerTest {
         when(pharmacyStaffMembershipService.getStaffMembership(99L))
                 .thenThrow(new PharmacyStaffMembershipNotFoundException("not found"));
 
-        mockMvc.perform(get(MEMBERSHIPS + "/99"))
+        mockMvc.perform(get(MEMBERSHIPS + "/99")
+                .with(admin()))
                 .andExpect(status().isNotFound());
     }
 
@@ -210,6 +235,7 @@ public class PharmacyStaffMembershipControllerTest {
         when(pharmacyStaffMembershipService.changeStaffRole(eq(10L), any())).thenReturn(changed);
 
         mockMvc.perform(patch(MEMBERSHIPS + "/10/role")
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "staffRole": "MANAGER" }
@@ -222,6 +248,7 @@ public class PharmacyStaffMembershipControllerTest {
     void changeStaffRole_returnsBadRequest_whenStaffRoleMissing() throws Exception {
 
         mockMvc.perform(patch(MEMBERSHIPS + "/10/role")
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -236,6 +263,7 @@ public class PharmacyStaffMembershipControllerTest {
                 .thenThrow(new PharmacyStaffMembershipNotActiveException("ended"));
 
         mockMvc.perform(patch(MEMBERSHIPS + "/20/role")
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "staffRole": "MANAGER" }
@@ -250,7 +278,8 @@ public class PharmacyStaffMembershipControllerTest {
 
         when(pharmacyStaffMembershipService.endStaffMembership(10L)).thenReturn(endedResponse());
 
-        mockMvc.perform(patch(MEMBERSHIPS + "/10/end"))
+        mockMvc.perform(patch(MEMBERSHIPS + "/10/end")
+                .with(admin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.active").value(false))
                 .andExpect(jsonPath("$.endedAt").isNotEmpty());
@@ -262,7 +291,8 @@ public class PharmacyStaffMembershipControllerTest {
         when(pharmacyStaffMembershipService.endStaffMembership(20L))
                 .thenThrow(new PharmacyStaffMembershipNotActiveException("already ended"));
 
-        mockMvc.perform(patch(MEMBERSHIPS + "/20/end"))
+        mockMvc.perform(patch(MEMBERSHIPS + "/20/end")
+                .with(admin()))
                 .andExpect(status().isConflict());
     }
 }

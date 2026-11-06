@@ -15,7 +15,13 @@ import org.springframework.http.MediaType;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import com.coderaah.medtrack.common.config.SecurityConfig;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -32,8 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(InventoryController.class)
+@Import(SecurityConfig.class)
 public class InventoryControllerTest {
-
     private static final String BASE = "/api/pharmacies/1/inventory";
 
     @Autowired
@@ -41,7 +47,15 @@ public class InventoryControllerTest {
 
     @MockitoBean
     private InventoryService inventoryService;
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
+    private JwtRequestPostProcessor pharmacyStaff() {
+        return jwt()
+                .jwt(token -> token.subject("9"))
+                .authorities(
+                        new SimpleGrantedAuthority("ROLE_PHARMACY_STAFF"));
+    }
     private InventoryItemResponse sampleItem() {
         InventoryItemResponse response = new InventoryItemResponse();
         response.setId(5L);
@@ -62,6 +76,7 @@ public class InventoryControllerTest {
         when(inventoryService.addInventoryItem(eq(1L), any())).thenReturn(sampleItem());
 
         mockMvc.perform(post(BASE)
+                        .with(pharmacyStaff())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "medicationId": 10, "initialQuantity": 20, "reorderLevel": 5 }
@@ -76,6 +91,7 @@ public class InventoryControllerTest {
     void addInventoryItem_returnsBadRequest_whenInitialQuantityNegative() throws Exception {
 
         mockMvc.perform(post(BASE)
+                        .with(pharmacyStaff())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "medicationId": 10, "initialQuantity": -1 }
@@ -89,6 +105,7 @@ public class InventoryControllerTest {
     void addInventoryItem_returnsBadRequest_whenMedicationIdMissing() throws Exception {
 
         mockMvc.perform(post(BASE)
+                        .with(pharmacyStaff())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "initialQuantity": 20 }
@@ -105,6 +122,7 @@ public class InventoryControllerTest {
                 .thenThrow(new DuplicateInventoryItemException("duplicate"));
 
         mockMvc.perform(post(BASE)
+                        .with(pharmacyStaff())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "medicationId": 10, "initialQuantity": 20 }
@@ -120,6 +138,7 @@ public class InventoryControllerTest {
         when(inventoryService.adjustStock(eq(1L), eq(5L), any())).thenReturn(sampleItem());
 
         mockMvc.perform(post(BASE + "/5/adjustments")
+                        .with(pharmacyStaff())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "quantityChange": 5, "reason": "Delivery" }
@@ -131,6 +150,7 @@ public class InventoryControllerTest {
     void adjustStock_returnsBadRequest_whenReasonMissing() throws Exception {
 
         mockMvc.perform(post(BASE + "/5/adjustments")
+                        .with(pharmacyStaff())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "quantityChange": 5, "reason": "   " }
@@ -147,6 +167,7 @@ public class InventoryControllerTest {
                 .thenThrow(new InvalidStockOperationException("Stock cannot become negative"));
 
         mockMvc.perform(post(BASE + "/5/adjustments")
+                        .with(pharmacyStaff())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "quantityChange": -100, "reason": "Too much" }
@@ -161,6 +182,7 @@ public class InventoryControllerTest {
                 .thenThrow(new ObjectOptimisticLockingFailureException(PharmacyInventory.class, 5L));
 
         mockMvc.perform(post(BASE + "/5/adjustments")
+                        .with(pharmacyStaff())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "quantityChange": 5, "reason": "Delivery" }
@@ -175,7 +197,8 @@ public class InventoryControllerTest {
 
         when(inventoryService.getLowStockItems(1L)).thenReturn(List.of(sampleItem()));
 
-        mockMvc.perform(get(BASE + "/low-stock"))
+        mockMvc.perform(get(BASE + "/low-stock")
+                .with(pharmacyStaff()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].medicationName").value("Ibuprofen"));
 
@@ -188,7 +211,8 @@ public class InventoryControllerTest {
         when(inventoryService.getInventoryItem(1L, 99L))
                 .thenThrow(new InventoryItemNotFoundException("not found"));
 
-        mockMvc.perform(get(BASE + "/99"))
+        mockMvc.perform(get(BASE + "/99")
+                .with(pharmacyStaff()))
                 .andExpect(status().isNotFound());
     }
 
@@ -203,7 +227,8 @@ public class InventoryControllerTest {
 
         when(inventoryService.getMovements(1L, 5L)).thenReturn(List.of(movement));
 
-        mockMvc.perform(get(BASE + "/5/movements"))
+        mockMvc.perform(get(BASE + "/5/movements")
+                .with(pharmacyStaff()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].movementType").value("RESTOCK"))
                 .andExpect(jsonPath("$[0].onHandDelta").value(20));
@@ -215,10 +240,12 @@ public class InventoryControllerTest {
     void updateReorderLevel_returnsBadRequest_whenBodyEmpty() throws Exception {
 
         mockMvc.perform(patch(BASE + "/5/reorder-level")
+                        .with(pharmacyStaff())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
 
         verify(inventoryService, never()).updateReorderLevel(anyLong(), anyLong(), anyInt());
     }
+
 }

@@ -10,7 +10,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import com.coderaah.medtrack.common.config.SecurityConfig;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -26,6 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(MedicationController.class)
+@Import(SecurityConfig.class)
 public class MedicationControllerTest {
 
     @Autowired
@@ -33,7 +40,15 @@ public class MedicationControllerTest {
 
     @MockitoBean
     private MedicationService medicationService;
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
+    private JwtRequestPostProcessor doctor() {
+        return jwt()
+                .jwt(token -> token.subject("9"))
+                .authorities(
+                        new SimpleGrantedAuthority("ROLE_DOCTOR"));
+    }
     @Test
     void createMedication_returnsCreated() throws Exception {
 
@@ -50,6 +65,7 @@ public class MedicationControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(post("/api/medications")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -70,6 +86,7 @@ public class MedicationControllerTest {
     void createMedication_returnsBadRequest_whenGenericNameIsBlank() throws Exception {
 
         mockMvc.perform(post("/api/medications")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -88,6 +105,7 @@ public class MedicationControllerTest {
         String longGenericName = "A".repeat(256);
 
         mockMvc.perform(post("/api/medications")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -104,6 +122,7 @@ public class MedicationControllerTest {
     void createMedication_returnsBadRequest_whenDosageFormIsMissing() throws Exception {
 
         mockMvc.perform(post("/api/medications")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -126,7 +145,8 @@ public class MedicationControllerTest {
         when(medicationService.getMedicationById(1L))
                 .thenReturn(response);
 
-        mockMvc.perform(get("/api/medications/1"))
+        mockMvc.perform(get("/api/medications/1")
+                        .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.genericName").value("Ibuprofen"))
@@ -139,7 +159,8 @@ public class MedicationControllerTest {
         when(medicationService.getMedicationById(999L))
                 .thenThrow(new MedicationNotFoundException("Medication not found"));
 
-        mockMvc.perform(get("/api/medications/999"))
+        mockMvc.perform(get("/api/medications/999")
+                        .with(doctor()))
                 .andExpect(status().isNotFound());
     }
 
@@ -157,7 +178,8 @@ public class MedicationControllerTest {
         when(medicationService.listMedications(null, null))
                 .thenReturn(List.of(medication1, medication2));
 
-        mockMvc.perform(get("/api/medications"))
+        mockMvc.perform(get("/api/medications")
+                        .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].genericName").value("Ibuprofen"))
                 .andExpect(jsonPath("$[1].genericName").value("Paracetamol"));
@@ -174,7 +196,9 @@ public class MedicationControllerTest {
         when(medicationService.listMedications(true, null))
                 .thenReturn(List.of(response));
 
-        mockMvc.perform(get("/api/medications").param("active", "true"))
+        mockMvc.perform(get("/api/medications")
+                        .with(doctor())
+                        .param("active", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].active").value(true));
     }
@@ -189,7 +213,9 @@ public class MedicationControllerTest {
         when(medicationService.listMedications(null, "amox"))
                 .thenReturn(List.of(response));
 
-        mockMvc.perform(get("/api/medications").param("search", "amox"))
+        mockMvc.perform(get("/api/medications")
+                        .with(doctor())
+                        .param("search", "amox"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].genericName").value("Amoxicillin"));
     }
@@ -209,6 +235,7 @@ public class MedicationControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(put("/api/medications/1")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -231,6 +258,7 @@ public class MedicationControllerTest {
                 .thenThrow(new MedicationNotFoundException("Medication not found"));
 
         mockMvc.perform(put("/api/medications/999")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -255,6 +283,7 @@ public class MedicationControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(patch("/api/medications/1/status")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -272,6 +301,7 @@ public class MedicationControllerTest {
                 .thenThrow(new MedicationNotFoundException("Medication not found"));
 
         mockMvc.perform(patch("/api/medications/999/status")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -285,6 +315,7 @@ public class MedicationControllerTest {
     void updateStatus_returnsBadRequest_whenActiveIsMissing() throws Exception {
 
         mockMvc.perform(patch("/api/medications/1/status")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {

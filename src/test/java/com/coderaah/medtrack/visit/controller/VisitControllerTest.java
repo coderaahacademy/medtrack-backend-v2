@@ -20,7 +20,11 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
+import com.coderaah.medtrack.common.config.SecurityConfig;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -37,7 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(VisitController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, SecurityConfig.class})
 class VisitControllerTest {
 
     @Autowired
@@ -45,7 +49,15 @@ class VisitControllerTest {
 
     @MockitoBean
     private VisitService visitService;
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
+    private JwtRequestPostProcessor doctor() {
+        return jwt()
+                .jwt(token -> token.subject("9"))
+                .authorities(
+                        new SimpleGrantedAuthority("ROLE_DOCTOR"));
+    }
     private VisitResponse visitResponse(Long id, VisitStatus status) {
         VisitResponse response = new VisitResponse();
         response.setId(id);
@@ -70,6 +82,7 @@ class VisitControllerTest {
 
 
         mockMvc.perform(post("/api/visits")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
 
@@ -92,6 +105,7 @@ class VisitControllerTest {
 
 
         mockMvc.perform(post("/api/visits")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -108,6 +122,7 @@ class VisitControllerTest {
     void startVisit_shouldReturn400_whenDoctorIdIsMissing() throws Exception {
 
         mockMvc.perform(post("/api/visits")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -129,6 +144,7 @@ class VisitControllerTest {
 
 
         mockMvc.perform(post("/api/visits")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -148,6 +164,7 @@ class VisitControllerTest {
 
 
         mockMvc.perform(post("/api/visits")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -168,7 +185,8 @@ class VisitControllerTest {
                 .thenReturn(visitResponse(5L, VisitStatus.IN_PROGRESS));
 
 
-        mockMvc.perform(get("/api/visits/5"))
+        mockMvc.perform(get("/api/visits/5")
+                        .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(5))
                 .andExpect(jsonPath("$.symptoms").value("Fever"))
@@ -184,7 +202,8 @@ class VisitControllerTest {
                 .thenThrow(new VisitNotFoundException(99L));
 
 
-        mockMvc.perform(get("/api/visits/99"))
+        mockMvc.perform(get("/api/visits/99")
+                        .with(doctor()))
                 .andExpect(status().isNotFound());
     }
 
@@ -200,7 +219,8 @@ class VisitControllerTest {
                         visitResponse(6L, VisitStatus.IN_PROGRESS)));
 
 
-        mockMvc.perform(get("/api/patients/1/visits"))
+        mockMvc.perform(get("/api/patients/1/visits")
+                        .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].id").value(5))
@@ -215,7 +235,8 @@ class VisitControllerTest {
                 .thenThrow(new PatientNotFoundException("Patient not found"));
 
 
-        mockMvc.perform(get("/api/patients/99/visits"))
+        mockMvc.perform(get("/api/patients/99/visits")
+                        .with(doctor()))
                 .andExpect(status().isNotFound());
     }
 
@@ -229,7 +250,8 @@ class VisitControllerTest {
                 .thenReturn(List.of(visitResponse(5L, VisitStatus.COMPLETED)));
 
 
-        mockMvc.perform(get("/api/doctors/2/visits"))
+        mockMvc.perform(get("/api/doctors/2/visits")
+                        .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].doctorId").value(2));
@@ -242,7 +264,8 @@ class VisitControllerTest {
         when(visitService.getVisitsByDoctor(99L))
                 .thenThrow(new DoctorNotFoundException("Doctor not found"));
 
-        mockMvc.perform(get("/api/doctors/99/visits"))
+        mockMvc.perform(get("/api/doctors/99/visits")
+                        .with(doctor()))
                 .andExpect(status().isNotFound());
     }
 
@@ -257,6 +280,7 @@ class VisitControllerTest {
 
 
         mockMvc.perform(put("/api/visits/5/clinical-notes")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -279,6 +303,7 @@ class VisitControllerTest {
 
 
         mockMvc.perform(put("/api/visits/5/clinical-notes")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"symptoms\": \"" + tooLong + "\"}"))
                 .andExpect(status().isBadRequest());
@@ -297,6 +322,7 @@ class VisitControllerTest {
 
 
         mockMvc.perform(put("/api/visits/5/clinical-notes")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -315,6 +341,7 @@ class VisitControllerTest {
 
 
         mockMvc.perform(put("/api/visits/99/clinical-notes")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -335,7 +362,8 @@ class VisitControllerTest {
         when(visitService.completeVisit(5L)).thenReturn(response);
 
 
-        mockMvc.perform(patch("/api/visits/5/complete"))
+        mockMvc.perform(patch("/api/visits/5/complete")
+                        .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
                 .andExpect(jsonPath("$.endedAt").exists());
@@ -350,7 +378,8 @@ class VisitControllerTest {
                         "Cannot complete a visit with status CANCELLED"));
 
 
-        mockMvc.perform(patch("/api/visits/5/complete"))
+        mockMvc.perform(patch("/api/visits/5/complete")
+                        .with(doctor()))
                 .andExpect(status().isConflict());
     }
 
@@ -362,7 +391,8 @@ class VisitControllerTest {
                 .thenThrow(new VisitNotFoundException(99L));
 
 
-        mockMvc.perform(patch("/api/visits/99/complete"))
+        mockMvc.perform(patch("/api/visits/99/complete")
+                        .with(doctor()))
                 .andExpect(status().isNotFound());
     }
 
@@ -376,7 +406,8 @@ class VisitControllerTest {
                 .thenReturn(visitResponse(5L, VisitStatus.CANCELLED));
 
 
-        mockMvc.perform(patch("/api/visits/5/cancel"))
+        mockMvc.perform(patch("/api/visits/5/cancel")
+                        .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
     }
@@ -390,7 +421,8 @@ class VisitControllerTest {
                         "Cannot cancel a visit with status COMPLETED"));
 
 
-        mockMvc.perform(patch("/api/visits/5/cancel"))
+        mockMvc.perform(patch("/api/visits/5/cancel")
+                        .with(doctor()))
                 .andExpect(status().isConflict());
     }
 
@@ -402,7 +434,8 @@ class VisitControllerTest {
                 .thenThrow(new VisitNotFoundException(99L));
 
 
-        mockMvc.perform(patch("/api/visits/99/cancel"))
+        mockMvc.perform(patch("/api/visits/99/cancel")
+                        .with(doctor()))
                 .andExpect(status().isNotFound());
 
     }
@@ -418,7 +451,8 @@ class VisitControllerTest {
         when(visitService.startVisitFromAppointment(5L)).thenReturn(response);
 
 
-        mockMvc.perform(post("/api/appointments/5/visit"))
+        mockMvc.perform(post("/api/appointments/5/visit")
+                        .with(doctor()))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/api/visits/7"))
                 .andExpect(jsonPath("$.id").value(7))
@@ -434,7 +468,8 @@ class VisitControllerTest {
                 .thenThrow(new AppointmentNotFoundException("Appointment not found with id: 99"));
 
 
-        mockMvc.perform(post("/api/appointments/99/visit"))
+        mockMvc.perform(post("/api/appointments/99/visit")
+                        .with(doctor()))
                 .andExpect(status().isNotFound());
     }
 
@@ -447,7 +482,8 @@ class VisitControllerTest {
                         "A cancelled appointment cannot start a visit"));
 
 
-        mockMvc.perform(post("/api/appointments/5/visit"))
+        mockMvc.perform(post("/api/appointments/5/visit")
+                        .with(doctor()))
                 .andExpect(status().isConflict());
     }
 
@@ -460,7 +496,8 @@ class VisitControllerTest {
                         "A visit already exists for this appointment"));
 
 
-        mockMvc.perform(post("/api/appointments/5/visit"))
+        mockMvc.perform(post("/api/appointments/5/visit")
+                        .with(doctor()))
                 .andExpect(status().isConflict());
     }
 
@@ -474,6 +511,7 @@ class VisitControllerTest {
 
 
         mockMvc.perform(post("/api/visits")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -496,7 +534,8 @@ class VisitControllerTest {
         when(visitService.getVisitByAppointment(5L)).thenReturn(response);
 
 
-        mockMvc.perform(get("/api/appointments/5/visit"))
+        mockMvc.perform(get("/api/appointments/5/visit")
+                        .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(7))
                 .andExpect(jsonPath("$.appointmentId").value(5));
@@ -510,7 +549,8 @@ class VisitControllerTest {
                 .thenThrow(new AppointmentNotFoundException("Appointment not found with id: 99"));
 
 
-        mockMvc.perform(get("/api/appointments/99/visit"))
+        mockMvc.perform(get("/api/appointments/99/visit")
+                        .with(doctor()))
                 .andExpect(status().isNotFound());
     }
 
@@ -522,7 +562,8 @@ class VisitControllerTest {
                 .thenThrow(new VisitNotFoundException("No visit exists for this appointment"));
 
 
-        mockMvc.perform(get("/api/appointments/5/visit"))
+        mockMvc.perform(get("/api/appointments/5/visit")
+                        .with(doctor()))
                 .andExpect(status().isNotFound());
     }
 }
