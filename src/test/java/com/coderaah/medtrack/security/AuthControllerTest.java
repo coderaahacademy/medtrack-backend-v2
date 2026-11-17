@@ -5,19 +5,17 @@ import com.coderaah.medtrack.identity.domain.Role;
 import com.coderaah.medtrack.security.controller.AuthController;
 import com.coderaah.medtrack.security.dto.LoginRequest;
 import com.coderaah.medtrack.security.dto.LoginResponse;
+import com.coderaah.medtrack.security.exception.InvalidCredentialsException;
 import com.coderaah.medtrack.security.service.AuthService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.server.ResponseStatusException;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -84,9 +82,7 @@ class AuthControllerTest {
             throws Exception {
 
         when(authService.login(any(LoginRequest.class)))
-                .thenThrow(new ResponseStatusException(
-                        HttpStatus.UNAUTHORIZED,
-                        "Invalid email or password"));
+                .thenThrow(new InvalidCredentialsException());
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

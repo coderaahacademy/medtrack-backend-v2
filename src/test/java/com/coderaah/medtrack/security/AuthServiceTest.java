@@ -11,7 +11,7 @@ import com.coderaah.medtrack.identity.repository.UserAccountRepository;
 import com.coderaah.medtrack.identity.repository.UserRoleRepository;
 import java.util.List;
 import java.util.Optional;
-
+import com.coderaah.medtrack.security.exception.InvalidCredentialsException;
 import com.coderaah.medtrack.security.service.AuthService;
 import com.coderaah.medtrack.security.service.JwtTokenService;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +20,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -82,13 +81,13 @@ class AuthServiceTest {
 
     @Test
     void invalidPasswordIsRejected() {
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
+        InvalidCredentialsException exception = assertThrows(
+                InvalidCredentialsException.class,
                 () -> service.login(request("wrong-password")));
 
         assertEquals(
-                HttpStatus.UNAUTHORIZED,
-                exception.getStatusCode());
+                "Invalid email or password",
+                exception.getMessage());
 
         assertNull(account.getLastLoginAt());
         verify(accounts, never()).save(any());
@@ -102,13 +101,13 @@ class AuthServiceTest {
     void inactiveAccountsCannotLogin(UserAccountStatus status) {
         account.setStatus(status);
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
+        InvalidCredentialsException exception = assertThrows(
+                InvalidCredentialsException.class,
                 () -> service.login(request("correct-password")));
 
         assertEquals(
-                HttpStatus.UNAUTHORIZED,
-                exception.getStatusCode());
+                "Invalid email or password",
+                exception.getMessage());
 
         assertNull(account.getLastLoginAt());
         verify(accounts, never()).save(any());
@@ -120,13 +119,13 @@ class AuthServiceTest {
         when(accounts.findByEmail(anyString()))
                 .thenReturn(Optional.empty());
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
+        InvalidCredentialsException exception = assertThrows(
+                InvalidCredentialsException.class,
                 () -> service.login(request("correct-password")));
 
         assertEquals(
-                HttpStatus.UNAUTHORIZED,
-                exception.getStatusCode());
+                "Invalid email or password",
+                exception.getMessage());
 
         verifyNoInteractions(tokens);
     }

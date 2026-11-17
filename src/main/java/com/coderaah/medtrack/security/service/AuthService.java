@@ -11,11 +11,11 @@ import com.coderaah.medtrack.identity.repository.UserRoleRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
-import org.springframework.http.HttpStatus;
+
+import com.coderaah.medtrack.security.exception.InvalidCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuthService {
@@ -63,9 +63,7 @@ public class AuthService {
                 || !passwordMatches
                 || account.getStatus() != UserAccountStatus.ACTIVE) {
 
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED,
-                    "Invalid email or password");
+          throw new InvalidCredentialsException();
         }
 
         List<Role> roles = userRoleRepository
