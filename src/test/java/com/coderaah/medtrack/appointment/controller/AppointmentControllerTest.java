@@ -26,6 +26,14 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.coderaah.medtrack.common.config.SecurityConfig;
+import com.coderaah.medtrack.security.CurrentUser;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -39,6 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AppointmentController.class)
+@Import({SecurityConfig.class, CurrentUser.class})
 class AppointmentControllerTest {
 
     @Autowired
@@ -49,6 +58,15 @@ class AppointmentControllerTest {
 
     @MockitoBean
     private AppointmentService appointmentService;
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
+
+    private JwtRequestPostProcessor doctor() {
+        return jwt()
+                .jwt(token -> token.subject("1"))
+                .authorities(
+                        new SimpleGrantedAuthority("ROLE_DOCTOR"));
+    }
 
     private AppointmentRequest validRequest() {
         AppointmentRequest request = new AppointmentRequest();
@@ -68,9 +86,11 @@ class AppointmentControllerTest {
         return response;
     }
 
-    private org.springframework.test.web.servlet.ResultActions postAppointment(AppointmentRequest request)
-            throws Exception {
+    private org.springframework.test.web.servlet.ResultActions postAppointment(
+            AppointmentRequest request) throws Exception {
+
         return mockMvc.perform(post("/api/appointments")
+                .with(doctor())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)));
     }
@@ -138,6 +158,7 @@ class AppointmentControllerTest {
     @Test
     void create_returnsBadRequest_whenAppointmentTypeIsUnknown() throws Exception {
         mockMvc.perform(post("/api/appointments")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -205,7 +226,8 @@ class AppointmentControllerTest {
     void getById_returnsOk_whenFound() throws Exception {
         when(appointmentService.getById(5L)).thenReturn(responseWithId(5L));
 
-        mockMvc.perform(get("/api/appointments/5"))
+        mockMvc.perform(get("/api/appointments/5")
+                        .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(5));
     }
@@ -215,7 +237,8 @@ class AppointmentControllerTest {
         when(appointmentService.getById(999L))
                 .thenThrow(new AppointmentNotFoundException("Appointment not found"));
 
-        mockMvc.perform(get("/api/appointments/999"))
+        mockMvc.perform(get("/api/appointments/999")
+                        .with(doctor()))
                 .andExpect(status().isNotFound());
     }
 
@@ -223,7 +246,8 @@ class AppointmentControllerTest {
     void getByPatient_returnsOk_withAppointments() throws Exception {
         when(appointmentService.getByPatient(3L)).thenReturn(List.of(responseWithId(1L), responseWithId(2L)));
 
-        mockMvc.perform(get("/api/patients/3/appointments"))
+        mockMvc.perform(get("/api/patients/3/appointments")
+                        .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1))
                 .andExpect(jsonPath("$[1].id").value(2));
@@ -233,7 +257,8 @@ class AppointmentControllerTest {
     void getByDoctor_returnsAllAppointments_whenNoDateGiven() throws Exception {
         when(appointmentService.getByDoctor(4L)).thenReturn(List.of(responseWithId(1L)));
 
-        mockMvc.perform(get("/api/doctors/4/appointments"))
+        mockMvc.perform(get("/api/doctors/4/appointments")
+                        .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1));
 
@@ -245,7 +270,9 @@ class AppointmentControllerTest {
         when(appointmentService.getByDoctorAndDate(4L, LocalDate.of(2026, 9, 10)))
                 .thenReturn(List.of(responseWithId(7L)));
 
-        mockMvc.perform(get("/api/doctors/4/appointments").param("date", "2026-09-10"))
+        mockMvc.perform(get("/api/doctors/4/appointments")
+                        .with(doctor())
+                        .param("date", "2026-09-10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(7));
 
@@ -254,7 +281,9 @@ class AppointmentControllerTest {
 
     @Test
     void getByDoctor_returnsBadRequest_whenDateIsMalformed() throws Exception {
-        mockMvc.perform(get("/api/doctors/4/appointments").param("date", "10-09-2026"))
+        mockMvc.perform(get("/api/doctors/4/appointments")
+                        .with(doctor())
+                        .param("date", "10-09-2026"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -266,7 +295,7 @@ class AppointmentControllerTest {
         response.setStatus(AppointmentStatus.CONFIRMED);
         when(appointmentService.confirm(7L, 1L)).thenReturn(response);
 
-        mockMvc.perform(patch("/api/appointments/7/confirm").param("actorUserId", "1"))
+        mockMvc.perform(patch("/api/appointments/7/confirm").with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(7))
                 .andExpect(jsonPath("$.status").value("CONFIRMED"));
@@ -277,7 +306,7 @@ class AppointmentControllerTest {
         when(appointmentService.confirm(anyLong(), anyLong()))
                 .thenThrow(new InvalidStatusTransitionException("Invalid status transition: COMPLETED -> CONFIRMED"));
 
-        mockMvc.perform(patch("/api/appointments/7/confirm").param("actorUserId", "1"))
+        mockMvc.perform(patch("/api/appointments/7/confirm").with(doctor()))
                 .andExpect(status().isConflict());
     }
 
@@ -286,16 +315,15 @@ class AppointmentControllerTest {
         when(appointmentService.confirm(anyLong(), anyLong()))
                 .thenThrow(new AppointmentNotFoundException("Appointment not found"));
 
-        mockMvc.perform(patch("/api/appointments/404/confirm").param("actorUserId", "1"))
+        mockMvc.perform(patch("/api/appointments/404/confirm").with(doctor()))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void confirm_returnsBadRequest_whenActorUserIdIsMissing() throws Exception {
+    void confirm_returnsUnauthorized_whenNotAuthenticated() throws Exception {
         mockMvc.perform(patch("/api/appointments/7/confirm"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized());
     }
-
     @Test
     void cancel_returnsOk_andPassesReasonToService() throws Exception {
         AppointmentResponse response = responseWithId(7L);
@@ -304,7 +332,7 @@ class AppointmentControllerTest {
         when(appointmentService.cancel(7L, 1L, "Patient requested")).thenReturn(response);
 
         mockMvc.perform(patch("/api/appointments/7/cancel")
-                        .param("actorUserId", "1")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "reason": "Patient requested" }
@@ -317,7 +345,7 @@ class AppointmentControllerTest {
     @Test
     void cancel_returnsBadRequest_whenReasonIsBlank() throws Exception {
         mockMvc.perform(patch("/api/appointments/7/cancel")
-                        .param("actorUserId", "1")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "reason": "  " }
@@ -330,7 +358,7 @@ class AppointmentControllerTest {
     @Test
     void cancel_returnsBadRequest_whenReasonExceeds255Characters() throws Exception {
         mockMvc.perform(patch("/api/appointments/7/cancel")
-                        .param("actorUserId", "1")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "reason": "%s" }
@@ -342,7 +370,7 @@ class AppointmentControllerTest {
 
     @Test
     void cancel_returnsBadRequest_whenBodyIsMissing() throws Exception {
-        mockMvc.perform(patch("/api/appointments/7/cancel").param("actorUserId", "1"))
+        mockMvc.perform(patch("/api/appointments/7/cancel").with(doctor()))
                 .andExpect(status().isBadRequest());
     }
 
@@ -352,7 +380,7 @@ class AppointmentControllerTest {
                 .thenThrow(new CancellationReasonRequiredException("Cancellation reason is required"));
 
         mockMvc.perform(patch("/api/appointments/7/cancel")
-                        .param("actorUserId", "1")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "reason": "x" }
@@ -366,7 +394,7 @@ class AppointmentControllerTest {
                 .thenThrow(new InvalidStatusTransitionException("Invalid status transition: COMPLETED -> CANCELLED"));
 
         mockMvc.perform(patch("/api/appointments/7/cancel")
-                        .param("actorUserId", "1")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "reason": "Too late" }
@@ -380,7 +408,8 @@ class AppointmentControllerTest {
         response.setStatus(AppointmentStatus.COMPLETED);
         when(appointmentService.complete(7L, 1L)).thenReturn(response);
 
-        mockMvc.perform(patch("/api/appointments/7/complete").param("actorUserId", "1"))
+        mockMvc.perform(patch("/api/appointments/7/complete")
+                        .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"));
     }
@@ -390,7 +419,8 @@ class AppointmentControllerTest {
         when(appointmentService.complete(anyLong(), anyLong()))
                 .thenThrow(new InvalidStatusTransitionException("Invalid status transition: SCHEDULED -> COMPLETED"));
 
-        mockMvc.perform(patch("/api/appointments/7/complete").param("actorUserId", "1"))
+        mockMvc.perform(patch("/api/appointments/7/complete")
+                        .with(doctor()))
                 .andExpect(status().isConflict());
     }
 
@@ -400,7 +430,8 @@ class AppointmentControllerTest {
         response.setStatus(AppointmentStatus.NO_SHOW);
         when(appointmentService.noShow(7L, 1L)).thenReturn(response);
 
-        mockMvc.perform(patch("/api/appointments/7/no-show").param("actorUserId", "1"))
+        mockMvc.perform(patch("/api/appointments/7/no-show")
+                        .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("NO_SHOW"));
     }
@@ -410,7 +441,88 @@ class AppointmentControllerTest {
         when(appointmentService.noShow(anyLong(), anyLong()))
                 .thenThrow(new InvalidStatusTransitionException("Invalid status transition: SCHEDULED -> NO_SHOW"));
 
-        mockMvc.perform(patch("/api/appointments/7/no-show").param("actorUserId", "1"))
+        mockMvc.perform(patch("/api/appointments/7/no-show")
+                        .with(doctor()))
                 .andExpect(status().isConflict());
+    }
+    @Test
+    void confirm_ignoresProvidedActorAndUsesAuthenticatedUser()
+            throws Exception {
+
+        when(appointmentService.confirm(7L, 1L))
+                .thenReturn(responseWithId(7L));
+
+        mockMvc.perform(patch("/api/appointments/7/confirm")
+                        .with(doctor())
+                        .param("actorUserId", "999"))
+                .andExpect(status().isOk());
+
+        verify(appointmentService).confirm(7L, 1L);
+        verify(appointmentService, never()).confirm(7L, 999L);
+    }
+    @Test
+    void cancel_ignoresProvidedActorAndUsesAuthenticatedUser()
+            throws Exception {
+
+        when(appointmentService.cancel(7L, 1L, "Patient requested"))
+                .thenReturn(responseWithId(7L));
+
+        mockMvc.perform(patch("/api/appointments/7/cancel")
+                        .with(doctor())
+                        .param("actorUserId", "999")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            { "reason": "Patient requested" }
+                            """))
+                .andExpect(status().isOk());
+
+        verify(appointmentService)
+                .cancel(7L, 1L, "Patient requested");
+
+        verify(appointmentService, never())
+                .cancel(7L, 999L, "Patient requested");
+    }
+    @Test
+    void complete_ignoresProvidedActorAndUsesAuthenticatedUser()
+            throws Exception {
+
+        when(appointmentService.complete(7L, 1L))
+                .thenReturn(responseWithId(7L));
+
+        mockMvc.perform(patch("/api/appointments/7/complete")
+                        .with(doctor())
+                        .param("actorUserId", "999"))
+                .andExpect(status().isOk());
+
+        verify(appointmentService).complete(7L, 1L);
+        verify(appointmentService, never()).complete(7L, 999L);
+    }
+
+    @Test
+    void noShow_ignoresProvidedActorAndUsesAuthenticatedUser()
+            throws Exception {
+
+        when(appointmentService.noShow(7L, 1L))
+                .thenReturn(responseWithId(7L));
+
+        mockMvc.perform(patch("/api/appointments/7/no-show")
+                        .with(doctor())
+                        .param("actorUserId", "999"))
+                .andExpect(status().isOk());
+
+        verify(appointmentService).noShow(7L, 1L);
+        verify(appointmentService, never()).noShow(7L, 999L);
+    }
+    @Test
+    void complete_returnsForbidden_whenUserIsPatient() throws Exception {
+        mockMvc.perform(patch("/api/appointments/7/complete")
+                        .with(jwt()
+                                .jwt(token -> token.subject("1"))
+                                .authorities(
+                                        new SimpleGrantedAuthority(
+                                                "ROLE_PATIENT"))))
+                .andExpect(status().isForbidden());
+
+        org.mockito.Mockito.verifyNoInteractions(appointmentService);
     }
 }

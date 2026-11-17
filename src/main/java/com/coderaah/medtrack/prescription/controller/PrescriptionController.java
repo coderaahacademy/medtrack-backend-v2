@@ -21,28 +21,36 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
+import com.coderaah.medtrack.security.CurrentUser;
 @RestController
 @RequestMapping("/api")
 public class PrescriptionController {
 
     private final PrescriptionService prescriptionService;
+    private final CurrentUser currentUser;
 
-    public PrescriptionController(PrescriptionService prescriptionService) {
+    public PrescriptionController(
+            PrescriptionService prescriptionService,
+            CurrentUser currentUser) {
+
         this.prescriptionService = prescriptionService;
+        this.currentUser = currentUser;
     }
 
     @PostMapping("/visits/{visitId}/prescriptions")
     public ResponseEntity<PrescriptionResponse> createPrescription(
             @PathVariable Long visitId,
-            @Valid @RequestBody CreatePrescriptionRequest request,
-            @RequestParam Long actorUserId) {
+            @Valid @RequestBody CreatePrescriptionRequest request) {
 
-        PrescriptionResponse response = prescriptionService.createPrescription(
-                visitId, request, actorUserId);
+        PrescriptionResponse response =
+                prescriptionService.createPrescription(
+                        visitId,
+                        request,
+                        currentUser.accountId());
 
         return ResponseEntity
-                .created(URI.create("/api/prescriptions/" + response.getId()))
+                .created(URI.create(
+                        "/api/prescriptions/" + response.getId()))
                 .body(response);
     }
 
@@ -78,21 +86,24 @@ public class PrescriptionController {
 
     @PatchMapping("/prescriptions/{id}/issue")
     public ResponseEntity<PrescriptionResponse> issue(
-            @PathVariable("id") Long prescriptionId,
-            @RequestParam Long actorUserId) {
+            @PathVariable("id") Long prescriptionId) {
 
         return ResponseEntity.ok(
-                prescriptionService.issue(prescriptionId, actorUserId));
+                prescriptionService.issue(
+                        prescriptionId,
+                        currentUser.accountId()));
     }
 
     @PatchMapping("/prescriptions/{id}/cancel")
     public ResponseEntity<PrescriptionResponse> cancel(
             @PathVariable("id") Long prescriptionId,
-            @RequestParam Long actorUserId,
             @Valid @RequestBody CancelPrescriptionRequest request) {
 
         return ResponseEntity.ok(
-                prescriptionService.cancel(prescriptionId, request, actorUserId));
+                prescriptionService.cancel(
+                        prescriptionId,
+                        request,
+                        currentUser.accountId()));
     }
 
     @GetMapping("/prescriptions/{id}")

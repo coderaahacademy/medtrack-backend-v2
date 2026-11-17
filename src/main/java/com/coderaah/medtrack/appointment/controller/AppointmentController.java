@@ -1,5 +1,5 @@
 package com.coderaah.medtrack.appointment.controller;
-
+import com.coderaah.medtrack.security.CurrentUser;
 import com.coderaah.medtrack.appointment.dto.AppointmentRequest;
 import com.coderaah.medtrack.appointment.dto.AppointmentResponse;
 import com.coderaah.medtrack.appointment.dto.CancelAppointmentRequest;
@@ -25,11 +25,15 @@ import java.util.List;
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
+    private final CurrentUser currentUser;
 
-    public AppointmentController(AppointmentService appointmentService) {
+    public AppointmentController(
+            AppointmentService appointmentService,
+            CurrentUser currentUser) {
+
         this.appointmentService = appointmentService;
+        this.currentUser = currentUser;
     }
-
 
     @PostMapping("/appointments")
     public ResponseEntity<AppointmentResponse> create(@Valid @RequestBody AppointmentRequest request) {
@@ -60,29 +64,45 @@ public class AppointmentController {
         return ResponseEntity.ok(appointmentService.getByDoctor(doctorId));
     }
 
-    // actorUserId is a temporary stand-in until authentication provides the acting user
-    @PatchMapping("/appointments/{id}/confirm")
-    public ResponseEntity<AppointmentResponse> confirm(@PathVariable Long id,
-                                                       @RequestParam Long actorUserId) {
-        return ResponseEntity.ok(appointmentService.confirm(id, actorUserId));
-    }
 
+    @PatchMapping("/appointments/{id}/confirm")
+    public ResponseEntity<AppointmentResponse> confirm(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                appointmentService.confirm(
+                        id,
+                        currentUser.accountId()));
+    }
     @PatchMapping("/appointments/{id}/cancel")
-    public ResponseEntity<AppointmentResponse> cancel(@PathVariable Long id,
-                                                      @RequestParam Long actorUserId,
-                                                      @Valid @RequestBody CancelAppointmentRequest request) {
-        return ResponseEntity.ok(appointmentService.cancel(id, actorUserId, request.getReason()));
+    public ResponseEntity<AppointmentResponse> cancel(
+            @PathVariable Long id,
+            @Valid @RequestBody CancelAppointmentRequest request) {
+
+        return ResponseEntity.ok(
+                appointmentService.cancel(
+                        id,
+                        currentUser.accountId(),
+                        request.getReason()));
     }
 
     @PatchMapping("/appointments/{id}/complete")
-    public ResponseEntity<AppointmentResponse> complete(@PathVariable Long id,
-                                                        @RequestParam Long actorUserId) {
-        return ResponseEntity.ok(appointmentService.complete(id, actorUserId));
+    public ResponseEntity<AppointmentResponse> complete(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                appointmentService.complete(
+                        id,
+                        currentUser.accountId()));
     }
 
     @PatchMapping("/appointments/{id}/no-show")
-    public ResponseEntity<AppointmentResponse> noShow(@PathVariable Long id,
-                                                      @RequestParam Long actorUserId) {
-        return ResponseEntity.ok(appointmentService.noShow(id, actorUserId));
+    public ResponseEntity<AppointmentResponse> noShow(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                appointmentService.noShow(
+                        id,
+                        currentUser.accountId()));
     }
 }

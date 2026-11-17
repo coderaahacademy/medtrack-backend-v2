@@ -13,7 +13,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import com.coderaah.medtrack.common.config.SecurityConfig;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -22,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(DoctorController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, SecurityConfig.class})
 class DoctorControllerTest {
 
     @Autowired
@@ -30,7 +35,15 @@ class DoctorControllerTest {
 
     @MockitoBean
     private DoctorService doctorService;
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
+    private JwtRequestPostProcessor doctor() {
+        return jwt()
+                .jwt(token -> token.subject("9"))
+                .authorities(
+                        new SimpleGrantedAuthority("ROLE_DOCTOR"));
+    }
     @Test
     void getDoctorById_shouldReturn404_whenDoctorDoesNotExist() throws Exception {
 
@@ -39,7 +52,9 @@ class DoctorControllerTest {
                 .thenThrow(new DoctorNotFoundException("Doctor with id 99 not found"));
 
         // Act & Assert
-        mockMvc.perform(get("/api/doctors/99")).andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/doctors/99")
+                .with(doctor()))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -50,7 +65,10 @@ class DoctorControllerTest {
                 .thenThrow(new DuplicateLicenseNumberException("License number Lic-No-123 already exists"));
 
         // Act & Assert
-        mockMvc.perform(post("/api/doctors").contentType(MediaType.APPLICATION_JSON).content("""
+        mockMvc.perform(post("/api/doctors")
+                .with(doctor())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
                 {
                   "personId": 1,
                   "licenseNumber": "Lic-No-123",
@@ -78,7 +96,8 @@ class DoctorControllerTest {
                 .thenReturn(response);
 
         // Act & Assert
-        mockMvc.perform(get("/api/doctors/1"))
+        mockMvc.perform(get("/api/doctors/1")
+                .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.personId").value(10))
@@ -111,6 +130,7 @@ class DoctorControllerTest {
 
         // Act & Assert
         mockMvc.perform(post("/api/doctors")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -148,6 +168,7 @@ class DoctorControllerTest {
 
         // Act & Assert
         mockMvc.perform(put("/api/doctors/1")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -180,6 +201,7 @@ class DoctorControllerTest {
 
         // Act & Assert
         mockMvc.perform(patch("/api/doctors/1/status")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -197,6 +219,7 @@ class DoctorControllerTest {
 
         // Act & Assert
         mockMvc.perform(patch("/api/doctors/1/status")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {}
@@ -220,6 +243,7 @@ class DoctorControllerTest {
 
         // Act & Assert
         mockMvc.perform(post("/api/doctors")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -241,6 +265,7 @@ class DoctorControllerTest {
 
         // Act & Assert
         mockMvc.perform(post("/api/doctors")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -266,6 +291,7 @@ class DoctorControllerTest {
 
         // Act & Assert
         mockMvc.perform(post("/api/doctors")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -286,6 +312,7 @@ class DoctorControllerTest {
 
         // Act & Assert
         mockMvc.perform(post("/api/doctors")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {

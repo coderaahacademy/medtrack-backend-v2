@@ -6,7 +6,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.coderaah.medtrack.common.config.SecurityConfig;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import com.coderaah.medtrack.common.exception.GlobalExceptionHandler;
 import com.coderaah.medtrack.doctor.dto.CreateSpecialtyRequest;
 import com.coderaah.medtrack.doctor.dto.SpecialtyResponse;
@@ -25,7 +30,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(SpecialtyController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, SecurityConfig.class})
 class SpecialtyControllerTest {
 
     @Autowired
@@ -36,7 +41,15 @@ class SpecialtyControllerTest {
 
     @MockitoBean
     private SpecialtyService specialtyService;
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
+    private JwtRequestPostProcessor doctor() {
+        return jwt()
+                .jwt(token -> token.subject("9"))
+                .authorities(
+                        new SimpleGrantedAuthority("ROLE_DOCTOR"));
+    }
     @Test
     void create_returns201WithBody() throws Exception {
         SpecialtyResponse response =
@@ -44,6 +57,7 @@ class SpecialtyControllerTest {
         when(specialtyService.create(any())).thenReturn(response);
 
         mockMvc.perform(post("/api/specialties")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new CreateSpecialtyRequest("CARDIO", "Cardiology"))))
                 .andExpect(status().isCreated())
@@ -56,6 +70,7 @@ class SpecialtyControllerTest {
     @Test
     void create_returns400WhenCodeBlank() throws Exception {
         mockMvc.perform(post("/api/specialties")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"code\":\"\",\"name\":\"Cardiology\"}"))
                 .andExpect(status().isBadRequest());
@@ -67,6 +82,7 @@ class SpecialtyControllerTest {
                 .thenThrow(new DuplicateSpecialtyCodeException("A specialty with code 'CARDIO' already exists"));
 
         mockMvc.perform(post("/api/specialties")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new CreateSpecialtyRequest("CARDIO", "Cardiology"))))
                 .andExpect(status().isConflict());
@@ -78,6 +94,7 @@ class SpecialtyControllerTest {
                 .thenThrow(new DuplicateSpecialtyNameException("A specialty with name 'Cardiology' already exists"));
 
         mockMvc.perform(post("/api/specialties")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new CreateSpecialtyRequest("CARD2", "Cardiology"))))
                 .andExpect(status().isConflict());
@@ -89,7 +106,8 @@ class SpecialtyControllerTest {
                 new SpecialtyResponse(1L, "CARDIO", "Cardiology", true, LocalDateTime.now(), LocalDateTime.now());
         when(specialtyService.findAll()).thenReturn(List.of(response));
 
-        mockMvc.perform(get("/api/specialties"))
+        mockMvc.perform(get("/api/specialties")
+                .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].code").value("CARDIO"));
     }

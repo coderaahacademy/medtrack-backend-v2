@@ -16,7 +16,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import com.coderaah.medtrack.common.config.SecurityConfig;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -38,6 +45,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(DoctorAvailabilityController.class)
+@Import(SecurityConfig.class)
 class DoctorAvailabilityControllerTest {
 
     @Autowired
@@ -46,11 +54,21 @@ class DoctorAvailabilityControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private DoctorAvailabilityService availabilityService;
 
-    @MockBean
+    @MockitoBean
     private DoctorScheduleExceptionService exceptionService;
+
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
+
+    private JwtRequestPostProcessor doctor() {
+        return jwt()
+                .jwt(token -> token.subject("9"))
+                .authorities(
+                        new SimpleGrantedAuthority("ROLE_DOCTOR"));
+    }
 
     @Test
     void shouldCreateAvailabilityAndReturn201() throws Exception {
@@ -77,6 +95,7 @@ class DoctorAvailabilityControllerTest {
 
         mockMvc.perform(
                         post("/api/doctors/1/availability")
+                                .with(doctor())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
                 )
@@ -107,7 +126,7 @@ class DoctorAvailabilityControllerTest {
 
         mockMvc.perform(
                         get("/api/doctors/1/availability")
-                )
+                                .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(10))
                 .andExpect(jsonPath("$[0].doctorId").value(1))
@@ -140,6 +159,7 @@ class DoctorAvailabilityControllerTest {
 
         mockMvc.perform(
                         put("/api/doctors/1/availability/10")
+                                .with(doctor())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
                 )
@@ -155,7 +175,7 @@ class DoctorAvailabilityControllerTest {
 
         mockMvc.perform(
                         delete("/api/doctors/1/availability/10")
-                )
+                                .with(doctor()))
                 .andExpect(status().isNoContent());
 
         verify(availabilityService)
@@ -196,6 +216,7 @@ class DoctorAvailabilityControllerTest {
 
         mockMvc.perform(
                         post("/api/doctors/1/schedule-exceptions")
+                                .with(doctor())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
                 )
@@ -232,7 +253,7 @@ class DoctorAvailabilityControllerTest {
 
         mockMvc.perform(
                         get("/api/doctors/1/schedule-exceptions")
-                )
+                                .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(20))
                 .andExpect(jsonPath("$[0].doctorId").value(1))
@@ -246,7 +267,7 @@ class DoctorAvailabilityControllerTest {
 
         mockMvc.perform(
                         delete("/api/doctors/1/schedule-exceptions/20")
-                )
+                                .with(doctor()))
                 .andExpect(status().isNoContent());
 
         verify(exceptionService)
@@ -271,6 +292,7 @@ class DoctorAvailabilityControllerTest {
 
         mockMvc.perform(
                         post("/api/doctors/1/availability")
+                                .with(doctor())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
                 )
@@ -295,6 +317,7 @@ class DoctorAvailabilityControllerTest {
 
         mockMvc.perform(
                         put("/api/doctors/1/availability/999")
+                                .with(doctor())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
                 )
@@ -312,7 +335,7 @@ class DoctorAvailabilityControllerTest {
 
         mockMvc.perform(
                         get("/api/doctors/999/schedule-exceptions")
-                )
+                                .with(doctor()))
                 .andExpect(status().isNotFound());
     }
 
@@ -328,7 +351,7 @@ class DoctorAvailabilityControllerTest {
 
         mockMvc.perform(
                         delete("/api/doctors/1/schedule-exceptions/20")
-                )
+                                .with(doctor()))
                 .andExpect(status().isBadRequest());
     }
 }

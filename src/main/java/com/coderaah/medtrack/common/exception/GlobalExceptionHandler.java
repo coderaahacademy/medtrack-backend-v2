@@ -1,6 +1,7 @@
 package com.coderaah.medtrack.common.exception;
 
 import com.coderaah.medtrack.pharmacy.exception.*;
+import com.coderaah.medtrack.security.exception.InvalidCredentialsException;
 import com.coderaah.medtrack.visit.exception.InvalidAppointmentForVisitException;
 import com.coderaah.medtrack.visit.exception.InvalidVisitStatusException;
 import com.coderaah.medtrack.visit.exception.VisitAlreadyExistsException;
@@ -57,6 +58,14 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<String> handleInvalidCredentials(
+            InvalidCredentialsException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(exception.getMessage());
+    }
     @ExceptionHandler(AvailabilityRuleNotFoundException.class)
     public ResponseEntity<String> handleAvailabilityRuleNotFound(
             AvailabilityRuleNotFoundException exception) {

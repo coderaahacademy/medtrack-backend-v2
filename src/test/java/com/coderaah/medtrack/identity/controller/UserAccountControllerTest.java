@@ -15,17 +15,19 @@ import com.coderaah.medtrack.identity.exception.UserRoleAlreadyAssignedException
 import com.coderaah.medtrack.identity.exception.UserRoleNotAssignedException;
 import com.coderaah.medtrack.identity.service.UserAccountService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import com.coderaah.medtrack.common.config.SecurityConfig;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
 import java.util.List;
-
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,26 +42,27 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@ExtendWith(MockitoExtension.class)
+@WebMvcTest(UserAccountController.class)
+@Import({GlobalExceptionHandler.class, SecurityConfig.class})
 class UserAccountControllerTest {
-
-    @Mock
+    @MockitoBean
     private UserAccountService userAccountService;
 
+    @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
     private ObjectMapper objectMapper;
 
-    @BeforeEach
-    void setUp() {
-        objectMapper = new ObjectMapper();
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
-        mockMvc = MockMvcBuilders
-                .standaloneSetup(new UserAccountController(userAccountService))
-                .setControllerAdvice(new GlobalExceptionHandler())
-                .build();
+    private JwtRequestPostProcessor admin() {
+        return jwt()
+                .jwt(token -> token.subject("9"))
+                .authorities(
+                        new SimpleGrantedAuthority("ROLE_ADMIN"));
     }
-
     @Test
     void createUserAccount_shouldReturnCreated() throws Exception {
         UserAccountResponse response = new UserAccountResponse();
@@ -81,6 +84,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         post("/api/users")
+                                .with(admin())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         objectMapper.writeValueAsString(request)
@@ -122,6 +126,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         post("/api/users")
+                                .with(admin())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         objectMapper.writeValueAsString(request)
@@ -143,6 +148,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         post("/api/users")
+                                .with(admin())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         objectMapper.writeValueAsString(request)
@@ -173,6 +179,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         post("/api/users")
+                                .with(admin())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         objectMapper.writeValueAsString(request)
@@ -207,6 +214,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         post("/api/users")
+                                .with(admin())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         objectMapper.writeValueAsString(request)
@@ -240,6 +248,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         post("/api/users")
+                                .with(admin())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         objectMapper.writeValueAsString(request)
@@ -267,7 +276,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         get("/api/users/10")
-                )
+                                .with(admin()))
                 .andExpect(status().isOk())
                 .andExpect(
                         jsonPath("$.id")
@@ -300,7 +309,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         get("/api/users/999")
-                )
+                                .with(admin()))
                 .andExpect(status().isNotFound())
                 .andExpect(
                         content().string(
@@ -331,7 +340,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         get("/api/users")
-                )
+                                .with(admin()) )
                 .andExpect(status().isOk())
                 .andExpect(
                         jsonPath("$.length()")
@@ -363,6 +372,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         get("/api/users/by-email")
+                                .with(admin())
                                 .param(
                                         "email",
                                         "john@example.com"
@@ -411,6 +421,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         patch("/api/users/10/status")
+                                .with(admin())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         objectMapper.writeValueAsString(request)
@@ -451,6 +462,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         post("/api/users/10/roles")
+                                .with(admin())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         objectMapper.writeValueAsString(request)
@@ -493,6 +505,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         post("/api/users/10/roles")
+                                .with(admin())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         objectMapper.writeValueAsString(request)
@@ -520,7 +533,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         get("/api/users/10/roles")
-                )
+                                .with(admin()) )
                 .andExpect(status().isOk())
                 .andExpect(
                         jsonPath("$.length()")
@@ -552,7 +565,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         delete("/api/users/10/roles/DOCTOR")
-                )
+                                .with(admin()))
                 .andExpect(status().isOk())
                 .andExpect(
                         jsonPath("$.length()")
@@ -585,7 +598,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         delete("/api/users/10/roles/DOCTOR")
-                )
+                                .with(admin()))
                 .andExpect(status().isConflict())
                 .andExpect(
                         content().string(
@@ -607,7 +620,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(
                         delete("/api/users/10/roles/DOCTOR")
-                )
+                                .with(admin()))
                 .andExpect(status().isOk())
                 .andExpect(
                         jsonPath("$.length()")

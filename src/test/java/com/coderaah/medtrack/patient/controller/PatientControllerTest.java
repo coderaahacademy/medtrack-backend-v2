@@ -8,7 +8,13 @@ import com.coderaah.medtrack.patient.service.PatientService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import com.coderaah.medtrack.common.config.SecurityConfig;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
@@ -26,6 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 @WebMvcTest(PatientController.class)
+@Import(SecurityConfig.class)
 public class PatientControllerTest {
 
     @Autowired
@@ -33,7 +40,15 @@ public class PatientControllerTest {
 
     @MockitoBean
     private PatientService patientService;
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
+    private JwtRequestPostProcessor doctor() {
+        return jwt()
+                .jwt(token -> token.subject("9"))
+                .authorities(
+                        new SimpleGrantedAuthority("ROLE_DOCTOR"));
+    }
     @Test
     void getPatientById_returnsOk() throws Exception {
 
@@ -46,7 +61,8 @@ public class PatientControllerTest {
         when(patientService.getPatientById(1L))
                 .thenReturn(response);
 
-        mockMvc.perform(get("/api/patients/1"))
+        mockMvc.perform(get("/api/patients/1")
+                .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.firstName").value("John"))
@@ -60,7 +76,8 @@ public class PatientControllerTest {
         when(patientService.getPatientById(99999L))
                 .thenThrow(new PatientNotFoundException("Patient not found"));
 
-        mockMvc.perform(get("/api/patients/99999"))
+        mockMvc.perform(get("/api/patients/99999")
+                .with(doctor()))
                 .andExpect(status().isNotFound());
     }
 
@@ -77,6 +94,7 @@ public class PatientControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(post("/api/patients")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                     {
@@ -96,6 +114,7 @@ public class PatientControllerTest {
     void createPatient_returnsBadRequest_whenRequiredFieldIsBlank() throws Exception {
 
         mockMvc.perform(post("/api/patients")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -114,6 +133,7 @@ public class PatientControllerTest {
                 .thenThrow(new DuplicateMedicalRecordNumberException("Medical record number already exists"));
 
         mockMvc.perform(post("/api/patients")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -139,7 +159,8 @@ public class PatientControllerTest {
         when(patientService.getAllPatients())
                 .thenReturn(List.of(patient1, patient2));
 
-        mockMvc.perform(get("/api/patients"))
+        mockMvc.perform(get("/api/patients")
+                .with(doctor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1))
                 .andExpect(jsonPath("$[0].firstName").value("John"))
@@ -162,6 +183,7 @@ public class PatientControllerTest {
         )).thenReturn(response);
 
         mockMvc.perform(put("/api/patients/1")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                     {
@@ -185,6 +207,7 @@ public class PatientControllerTest {
         )).thenThrow(new PatientNotFoundException("Patient not found"));
 
         mockMvc.perform(put("/api/patients/99999")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -205,6 +228,7 @@ public class PatientControllerTest {
         )).thenThrow(new DuplicateMedicalRecordNumberException("Medical record number already exists"));
 
         mockMvc.perform(put("/api/patients/1")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
@@ -222,6 +246,7 @@ public class PatientControllerTest {
         String longFirstName = "A".repeat(101);
 
         mockMvc.perform(post("/api/patients")
+                        .with(doctor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                         {
